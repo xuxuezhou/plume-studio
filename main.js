@@ -27,30 +27,78 @@ function defaultData() {
       wechatAppId: '',
       wechatAppSecret: null
     },
-    articles: [
-      {
-        id: createId('article'),
-        title: 'First WeChat Article',
-        author: '',
-        digest: 'Use this starter draft to shape your local writing workflow.',
-        sourceUrl: '',
-        coverPath: '',
-        showCover: true,
-        openComment: false,
-        fansOnlyComment: false,
-        contentMarkdown:
-          '## Start writing\n\nThis is your local WeChat Official Account writing desk.\n\n- Manage articles in the library\n- Draft in the center editor\n- Ask GPT for editing help in the side panel\n\nWhen the article is ready, send it to the WeChat draft box first, then publish only after a final manual check.',
-        wechat: {
-          draftMediaId: '',
-          publishId: '',
-          articleId: '',
-          lastStatus: ''
-        },
-        createdAt: timestamp,
-        updatedAt: timestamp
-      }
-    ]
+    articles: [defaultArticle(timestamp)]
   };
+}
+
+function defaultArticle(timestamp = nowIso()) {
+  const createdAt = timestamp;
+  return {
+    id: createId('article'),
+    title: 'First WeChat Article',
+    author: '',
+    digest: 'Use this starter draft to shape your local writing workflow.',
+    sourceUrl: '',
+    coverPath: '',
+    showCover: true,
+    openComment: false,
+    fansOnlyComment: false,
+    contentMarkdown:
+      '## Start writing\n\nThis is your local WeChat Official Account writing desk.\n\n- Manage articles in the draft drawer\n- Write in the left paper-style editor\n- Use preview, AI, publishing, and settings from the right panel\n\nWhen the article is ready, send it to the WeChat draft box first, then publish only after a final manual check.',
+    wechat: {
+      draftMediaId: '',
+      publishId: '',
+      articleId: '',
+      lastStatus: ''
+    },
+    createdAt,
+    updatedAt: createdAt
+  };
+}
+
+function migrateData(data) {
+  let changed = false;
+  const next = {
+    version: DATA_VERSION,
+    settings: {
+      openaiModel: DEFAULT_MODEL,
+      openaiApiKey: null,
+      wechatAppId: '',
+      wechatAppSecret: null,
+      ...(data.settings || {})
+    },
+    articles: Array.isArray(data.articles) ? data.articles : []
+  };
+
+  if (next.articles.length === 0) {
+    next.articles = [defaultArticle()];
+    changed = true;
+  }
+
+  next.articles = next.articles.map((article) => {
+    const looksLikeOldStarter =
+      article.title === '\u7b2c\u4e00\u7bc7\u516c\u4f17\u53f7\u6587\u7ae0' ||
+      article.contentMarkdown?.includes('\u8fd9\u91cc\u662f\u4f60\u7684\u672c\u5730\u516c\u4f17\u53f7\u5199\u4f5c\u53f0');
+
+    if (!looksLikeOldStarter) {
+      return article;
+    }
+
+    changed = true;
+    return {
+      ...defaultArticle(article.createdAt || nowIso()),
+      id: article.id || createId('article'),
+      wechat: {
+        draftMediaId: '',
+        publishId: '',
+        articleId: '',
+        lastStatus: '',
+        ...(article.wechat || {})
+      }
+    };
+  });
+
+  return { data: next, changed };
 }
 
 function ensureDataFile() {
@@ -65,7 +113,12 @@ function ensureDataFile() {
 function readData() {
   ensureDataFile();
   try {
-    return JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+    const parsed = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+    const migrated = migrateData(parsed);
+    if (migrated.changed) {
+      writeData(migrated.data);
+    }
+    return migrated.data;
   } catch {
     const fresh = defaultData();
     writeData(fresh);
@@ -173,7 +226,35 @@ function createWindow() {
     }
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  mainWindow.webContents.once('did-finish-load', ensureRendererLoaded);
+  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'), {
+    query: {
+      v: app.getVersion()
+    }
+  });
+}
+
+async function ensureRendererLoaded() {
+  const rendererPath = path.join(__dirname, 'renderer');
+  const state = await mainWindow.webContents
+    .executeJavaScript(
+      `({
+        styleCount: document.styleSheets.length,
+        scriptStarted: Boolean(window.__WEWRITE_SCRIPT_STARTED),
+        scriptReady: Boolean(window.__WEWRITE_READY)
+      })`
+    )
+    .catch(() => ({ styleCount: 0, scriptStarted: false, scriptReady: false }));
+
+  if (!state.styleCount) {
+    const css = fs.readFileSync(path.join(rendererPath, 'styles.css'), 'utf8');
+    await mainWindow.webContents.insertCSS(css);
+  }
+
+  if (!state.scriptStarted) {
+    const js = fs.readFileSync(path.join(rendererPath, 'app.js'), 'utf8');
+    await mainWindow.webContents.executeJavaScript(js);
+  }
 }
 
 app.whenReady().then(() => {

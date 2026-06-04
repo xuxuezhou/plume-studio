@@ -1,3 +1,5 @@
+window.__WEWRITE_SCRIPT_STARTED = true;
+
 function createPreviewBridge() {
   const timestamp = new Date().toISOString();
   let article = {
@@ -639,3 +641,4 @@ window.addEventListener('keydown', (event) => {
 
 applyLayout();
 load();
+window.__WEWRITE_READY = true;
