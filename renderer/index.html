@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WeWrite Studio</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=0.1.2" />
   </head>
   <body>
     <div class="app-shell">
@@ -12,7 +12,6 @@
         <div class="rail-brand" title="WeWrite Studio">W</div>
         <button class="rail-button" id="newArticleButton" title="New draft">+</button>
         <button class="rail-button active" id="toggleDraftsButton" title="Toggle drafts">D</button>
-        <button class="rail-button" id="themeButton" title="Toggle theme">Dark</button>
         <button class="rail-button" id="toggleInspectorButton" title="Toggle panel">P</button>
         <div class="rail-spacer"></div>
         <p class="rail-caption">WeWrite</p>
@@ -43,6 +42,11 @@
           <div class="paper-actions">
             <label><input id="showCoverInput" type="checkbox" /> Cover</label>
             <label><input id="openCommentInput" type="checkbox" /> Comments</label>
+            <button class="theme-toggle" id="themeButton" title="Toggle theme" aria-label="Toggle theme">
+              <span class="theme-sun" aria-hidden="true"></span>
+              <span class="theme-moon" aria-hidden="true"></span>
+            </button>
+            <button class="settings-trigger" id="openSettingsButton">Settings</button>
           </div>
         </header>
 
@@ -70,7 +74,6 @@
           <button class="tab active" data-tab="preview">Preview</button>
           <button class="tab" data-tab="assistant">Assistant</button>
           <button class="tab" data-tab="publish">Publish</button>
-          <button class="tab" data-tab="settings">Settings</button>
         </div>
 
         <section class="panel active" id="previewPanel">
@@ -82,6 +85,14 @@
             <div class="spark">✧</div>
             <h2>Writing Assistant</h2>
             <p>Work from the selected text or the full draft.</p>
+          </div>
+          <div class="assistant-controls">
+            <label for="assistantModelSelect">Model</label>
+            <select id="assistantModelSelect">
+              <option value="gpt-5.4-mini">gpt-5.4-mini</option>
+              <option value="gpt-5.4">gpt-5.4</option>
+              <option value="gpt-5.5">gpt-5.5</option>
+            </select>
           </div>
           <div class="tool-grid">
             <button data-action="outline">Outline</button>
@@ -116,22 +127,54 @@
           <pre id="wechatLog"></pre>
         </section>
 
-        <section class="panel" id="settingsPanel">
-          <label>OpenAI API Key</label>
-          <input id="openaiApiKeyInput" type="password" placeholder="Leave blank to keep current key" />
-          <label>OpenAI Model</label>
-          <input id="openaiModelInput" />
-          <label>WeChat Official Account AppID</label>
-          <input id="wechatAppIdInput" />
-          <label>WeChat Official Account AppSecret</label>
-          <input id="wechatAppSecretInput" type="password" placeholder="Leave blank to keep current secret" />
-          <button id="saveSettingsButton">Save Settings</button>
-          <button id="resetLayoutButton">Reset Layout</button>
-          <div class="settings-state" id="settingsState"></div>
-        </section>
       </aside>
     </div>
 
-    <script src="./app.js"></script>
+    <div class="modal-backdrop" id="settingsModal" hidden>
+      <section class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+        <header class="settings-header">
+          <div>
+            <span class="eyebrow">Workspace</span>
+            <h2 id="settingsTitle">Settings</h2>
+          </div>
+          <button class="close-button" id="closeSettingsButton" title="Close settings">Close</button>
+        </header>
+
+        <div class="settings-body">
+          <section class="settings-section">
+            <h3>OpenAI API</h3>
+            <p>The writing assistant uses the OpenAI API. ChatGPT web sign-in does not authorize API calls.</p>
+            <label>OpenAI API Key</label>
+            <input id="openaiApiKeyInput" type="password" placeholder="Leave blank to keep current key" />
+          </section>
+
+          <section class="settings-section">
+            <h3>ChatGPT Account</h3>
+            <p>You can open ChatGPT and sign in with Google in your browser, but this app still needs an API key for local agent calls.</p>
+            <button id="openChatGptButton">Open ChatGPT Sign-in</button>
+          </section>
+
+          <section class="settings-section">
+            <h3>WeChat Publishing</h3>
+            <label>WeChat Official Account AppID</label>
+            <input id="wechatAppIdInput" />
+            <label>WeChat Official Account AppSecret</label>
+            <input id="wechatAppSecretInput" type="password" placeholder="Leave blank to keep current secret" />
+          </section>
+
+          <section class="settings-section">
+            <h3>Layout</h3>
+            <button id="resetLayoutButton">Reset Layout</button>
+          </section>
+
+          <footer class="settings-footer">
+            <button id="saveSettingsButton">Save Settings</button>
+            <div class="settings-state" id="settingsState"></div>
+          </footer>
+        </div>
+      </section>
+    </div>
+
+    <script src="./app.js?v=0.1.2"></script>
   </body>
 </html>

@@ -1,8 +1,8 @@
 :root {
   color-scheme: light;
   --rail-width: 76px;
-  --drawer-width: 248px;
-  --inspector-width: 520px;
+  --drawer-width: 224px;
+  --inspector-width: 420px;
   --handle-size: 6px;
   --paper: #fff8f8;
   --surface: #ffffff;
@@ -67,7 +67,8 @@ body {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
@@ -96,7 +97,8 @@ button.danger,
 }
 
 input,
-textarea {
+textarea,
+select {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -106,34 +108,54 @@ textarea {
 }
 
 input:focus,
-textarea:focus {
+textarea:focus,
+select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 4px var(--focus);
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--paper) 72%, var(--surface));
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid color-mix(in srgb, var(--paper) 72%, var(--surface));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 42%, var(--line));
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-2);
 }
 
 .app-shell {
   display: grid;
   grid-template-columns:
     var(--rail-width) var(--drawer-width) var(--handle-size)
-    minmax(560px, 1fr) var(--handle-size) var(--inspector-width);
+    minmax(460px, 1fr) var(--handle-size) var(--inspector-width);
   height: 100vh;
   overflow: hidden;
 }
 
 body.drafts-hidden .app-shell {
   grid-template-columns:
-    var(--rail-width) 0 0 minmax(560px, 1fr)
+    var(--rail-width) 0 0 minmax(460px, 1fr)
     var(--handle-size) var(--inspector-width);
 }
 
 body.inspector-hidden .app-shell {
   grid-template-columns:
     var(--rail-width) var(--drawer-width) var(--handle-size)
-    minmax(560px, 1fr) 0 0;
+    minmax(460px, 1fr) 0 0;
 }
 
 body.drafts-hidden.inspector-hidden .app-shell {
-  grid-template-columns: var(--rail-width) 0 0 minmax(560px, 1fr) 0 0;
+  grid-template-columns: var(--rail-width) 0 0 minmax(460px, 1fr) 0 0;
 }
 
 .sidebar {
@@ -329,22 +351,27 @@ body.inspector-hidden #inspectorResizeHandle {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
+  overflow: hidden;
   background: linear-gradient(180deg, var(--paper), color-mix(in srgb, var(--paper) 84%, var(--surface)));
 }
 
 .paperbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  height: 52px;
-  padding: 0 26px;
+  min-height: 52px;
+  padding: 8px 20px;
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--surface) 72%, transparent);
 }
 
 .paper-tabs {
   display: flex;
+  flex: 1 1 240px;
+  min-width: 0;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }
@@ -366,6 +393,10 @@ body.inspector-hidden #inspectorResizeHandle {
 
 .paper-actions {
   display: flex;
+  flex: 1 1 260px;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 14px;
   align-items: center;
   color: var(--muted);
@@ -377,14 +408,91 @@ body.inspector-hidden #inspectorResizeHandle {
   width: auto;
 }
 
+.theme-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 72px;
+  min-width: 72px;
+  height: 34px;
+  padding: 0 9px;
+  border-color: var(--line-strong);
+  background: var(--surface);
+}
+
+.theme-toggle::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 5px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: var(--shadow);
+  transition: transform 140ms ease;
+}
+
+body[data-theme="dark"] .theme-toggle::after {
+  transform: translateX(36px);
+}
+
+.theme-sun,
+.theme-moon {
+  position: relative;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+}
+
+.theme-sun {
+  border: 2px solid var(--amber);
+  border-radius: 50%;
+}
+
+.theme-sun::before,
+.theme-sun::after {
+  content: "";
+  position: absolute;
+  background: var(--amber);
+}
+
+.theme-sun::before {
+  left: 6px;
+  top: -5px;
+  width: 2px;
+  height: 22px;
+}
+
+.theme-sun::after {
+  left: -5px;
+  top: 6px;
+  width: 22px;
+  height: 2px;
+}
+
+.theme-moon {
+  border-radius: 50%;
+  box-shadow: inset -5px 0 0 var(--blue);
+}
+
+.settings-trigger {
+  height: 34px;
+  padding: 0 14px;
+  border-color: var(--line-strong);
+  font-weight: 800;
+}
+
 .editor-stage {
   min-height: 0;
-  overflow: auto;
-  padding: 32px 38px 44px;
+  overflow: scroll;
+  scrollbar-gutter: stable both-edges;
+  padding: 32px 38px 88px;
 }
 
 .editor-sheet {
-  max-width: 860px;
+  max-width: 780px;
   min-height: calc(100vh - 132px);
   margin: 0 auto;
   padding: 40px 48px 28px;
@@ -443,6 +551,8 @@ body.inspector-hidden #inspectorResizeHandle {
 #contentInput {
   height: calc(100vh - 350px);
   min-height: 430px;
+  overflow: auto;
+  scrollbar-gutter: stable;
   resize: none;
   padding: 22px 0;
   border: 0;
@@ -474,7 +584,7 @@ body.inspector-hidden #inspectorResizeHandle {
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 0;
   height: 52px;
   border-bottom: 1px solid var(--line);
@@ -498,8 +608,10 @@ body.inspector-hidden #inspectorResizeHandle {
 .panel {
   display: none;
   min-height: 0;
-  overflow: auto;
-  padding: 24px;
+  height: 100%;
+  overflow: scroll;
+  scrollbar-gutter: stable both-edges;
+  padding: 24px 24px 76px;
 }
 
 .panel.active {
@@ -516,6 +628,7 @@ body.inspector-hidden #inspectorResizeHandle {
   background: var(--sheet);
   box-shadow: var(--shadow);
   line-height: 1.82;
+  overflow-wrap: break-word;
 }
 
 #preview h1,
@@ -585,6 +698,30 @@ body.inspector-hidden #inspectorResizeHandle {
   gap: 10px;
 }
 
+.assistant-controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.assistant-controls label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.assistant-controls select {
+  height: 36px;
+  padding: 0 12px;
+}
+
 .small-textarea {
   height: 96px;
   margin-top: 12px;
@@ -634,8 +771,7 @@ body.inspector-hidden #inspectorResizeHandle {
   padding: 0 12px;
 }
 
-#publishPanel button,
-#settingsPanel button {
+#publishPanel button {
   width: 100%;
   margin-bottom: 10px;
 }
@@ -660,6 +796,106 @@ body.inspector-hidden #inspectorResizeHandle {
   white-space: pre-wrap;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: rgba(30, 15, 22, 0.38);
+  backdrop-filter: blur(8px);
+}
+
+.modal-backdrop[hidden] {
+  display: none;
+}
+
+.settings-dialog {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(720px, calc(100vw - 56px));
+  max-height: calc(100vh - 56px);
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 22px;
+  background: var(--sheet);
+  box-shadow: 0 24px 80px rgba(57, 18, 31, 0.22);
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 24px 28px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-header h2 {
+  margin: 3px 0 0;
+  font-size: 26px;
+}
+
+.close-button {
+  width: auto;
+  padding: 0 14px;
+}
+
+.settings-body {
+  overflow: auto;
+  scrollbar-gutter: stable;
+  padding: 22px 28px 28px;
+}
+
+.settings-section {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.settings-section h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.settings-section p {
+  margin: 0 0 4px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.settings-section label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.settings-section input {
+  height: 38px;
+  padding: 0 12px;
+}
+
+.settings-section button,
+.settings-footer button {
+  width: max-content;
+  min-width: 150px;
+  padding: 0 16px;
+  font-weight: 800;
+}
+
+.settings-footer {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-top: 6px;
+}
+
 body.resizing {
   cursor: col-resize;
   user-select: none;
@@ -668,7 +904,7 @@ body.resizing {
 @media (max-width: 1180px) {
   .app-shell {
     grid-template-columns:
-      var(--rail-width) 0 0 minmax(520px, 1fr)
+      var(--rail-width) 0 0 minmax(420px, 1fr)
       var(--handle-size) minmax(360px, var(--inspector-width));
   }
 

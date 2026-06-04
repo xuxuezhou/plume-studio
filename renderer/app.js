@@ -71,8 +71,8 @@ const bridge = window.writingDesk || createPreviewBridge();
 
 const DEFAULT_LAYOUT = {
   theme: 'light',
-  drawerWidth: 248,
-  inspectorWidth: 520,
+  drawerWidth: 224,
+  inspectorWidth: 420,
   draftsHidden: false,
   inspectorHidden: false
 };
@@ -109,6 +109,7 @@ const elements = {
   inspectorResizeHandle: document.querySelector('#inspectorResizeHandle'),
   draftCount: document.querySelector('#draftCount'),
   assistantNote: document.querySelector('#assistantNote'),
+  assistantModelSelect: document.querySelector('#assistantModelSelect'),
   assistantOutput: document.querySelector('#assistantOutput'),
   insertAssistantButton: document.querySelector('#insertAssistantButton'),
   replaceAssistantButton: document.querySelector('#replaceAssistantButton'),
@@ -118,24 +119,31 @@ const elements = {
   publishIdInput: document.querySelector('#publishIdInput'),
   articleIdInput: document.querySelector('#articleIdInput'),
   openaiApiKeyInput: document.querySelector('#openaiApiKeyInput'),
-  openaiModelInput: document.querySelector('#openaiModelInput'),
   wechatAppIdInput: document.querySelector('#wechatAppIdInput'),
   wechatAppSecretInput: document.querySelector('#wechatAppSecretInput'),
   settingsState: document.querySelector('#settingsState'),
-  resetLayoutButton: document.querySelector('#resetLayoutButton')
+  resetLayoutButton: document.querySelector('#resetLayoutButton'),
+  settingsModal: document.querySelector('#settingsModal'),
+  openSettingsButton: document.querySelector('#openSettingsButton'),
+  closeSettingsButton: document.querySelector('#closeSettingsButton'),
+  openChatGptButton: document.querySelector('#openChatGptButton')
 };
 
 function loadLayout() {
   try {
     const stored = JSON.parse(localStorage.getItem('wewrite-layout') || '{}');
+    const rawDrawerWidth = stored.drawerWidth || stored.sidebarWidth || DEFAULT_LAYOUT.drawerWidth;
+    const drawerWidth = clamp(rawDrawerWidth, 190, 360);
+    const rawInspectorWidth =
+      stored.inspectorWidth && stored.inspectorWidth >= 360
+        ? stored.inspectorWidth
+        : DEFAULT_LAYOUT.inspectorWidth;
+    const maxInspectorWidth = clamp(window.innerWidth - 76 - drawerWidth - 12 - 460, 360, 620);
     return {
       ...DEFAULT_LAYOUT,
       ...stored,
-      drawerWidth: stored.drawerWidth || stored.sidebarWidth || DEFAULT_LAYOUT.drawerWidth,
-      inspectorWidth:
-        stored.inspectorWidth && stored.inspectorWidth >= 420
-          ? stored.inspectorWidth
-          : DEFAULT_LAYOUT.inspectorWidth,
+      drawerWidth,
+      inspectorWidth: clamp(rawInspectorWidth, 360, maxInspectorWidth),
       draftsHidden:
         typeof stored.draftsHidden === 'boolean'
           ? stored.draftsHidden
@@ -163,7 +171,6 @@ function applyLayout() {
   document.body.classList.toggle('drafts-hidden', state.layout.draftsHidden);
   document.body.classList.toggle('inspector-hidden', state.layout.inspectorHidden);
 
-  elements.themeButton.textContent = state.layout.theme === 'dark' ? 'L' : 'D';
   elements.themeButton.title = state.layout.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
   elements.toggleDraftsButton.title = state.layout.draftsHidden ? 'Show drafts' : 'Hide drafts';
   elements.toggleInspectorButton.title = state.layout.inspectorHidden ? 'Show panel' : 'Hide panel';
@@ -319,7 +326,7 @@ function renderPreview() {
 }
 
 function renderSettings() {
-  elements.openaiModelInput.value = state.settings.openaiModel || 'gpt-5.4-mini';
+  elements.assistantModelSelect.value = state.settings.openaiModel || 'gpt-5.4-mini';
   elements.wechatAppIdInput.value = state.settings.wechatAppId || '';
   elements.settingsState.textContent = [
     `OpenAI key: ${state.settings.hasOpenaiApiKey ? 'saved' : 'not saved'}`,
@@ -399,10 +406,11 @@ function startResize(kind, event) {
   function move(pointerEvent) {
     const delta = pointerEvent.clientX - startX;
     if (kind === 'drafts') {
-      state.layout.drawerWidth = clamp(start.drawerWidth + delta, 208, 420);
+      state.layout.drawerWidth = clamp(start.drawerWidth + delta, 190, 360);
     }
     if (kind === 'inspector') {
-      state.layout.inspectorWidth = clamp(start.inspectorWidth - delta, 360, 680);
+      const maxInspectorWidth = clamp(window.innerWidth - 76 - state.layout.drawerWidth - 12 - 460, 360, 620);
+      state.layout.inspectorWidth = clamp(start.inspectorWidth - delta, 360, maxInspectorWidth);
     }
     applyLayout();
   }
@@ -418,6 +426,17 @@ function startResize(kind, event) {
   document.body.classList.add('resizing');
   window.addEventListener('pointermove', move);
   window.addEventListener('pointerup', stop);
+}
+
+function openSettings() {
+  elements.settingsModal.hidden = false;
+  elements.settingsModal.removeAttribute('hidden');
+  elements.openaiApiKeyInput.focus();
+}
+
+function closeSettings() {
+  elements.settingsModal.hidden = true;
+  elements.settingsModal.setAttribute('hidden', '');
 }
 
 document.querySelectorAll('.tab').forEach((tab) => {
@@ -436,6 +455,40 @@ elements.themeButton.addEventListener('click', () => {
   state.layout.theme = state.layout.theme === 'dark' ? 'light' : 'dark';
   applyLayout();
   saveLayout();
+  renderSettings();
+});
+
+elements.openSettingsButton.addEventListener('click', openSettings);
+elements.closeSettingsButton.addEventListener('click', closeSettings);
+elements.openSettingsButton.onclick = openSettings;
+elements.closeSettingsButton.onclick = closeSettings;
+window.__WEWRITE_OPEN_SETTINGS = openSettings;
+window.__WEWRITE_CLOSE_SETTINGS = closeSettings;
+document.addEventListener(
+  'click',
+  (event) => {
+    if (event.target.closest('#openSettingsButton')) {
+      event.preventDefault();
+      openSettings();
+    }
+    if (event.target.closest('#closeSettingsButton')) {
+      event.preventDefault();
+      closeSettings();
+    }
+  },
+  true
+);
+elements.settingsModal.addEventListener('click', (event) => {
+  if (event.target === elements.settingsModal) {
+    closeSettings();
+  }
+});
+
+elements.assistantModelSelect.addEventListener('change', async () => {
+  const settings = await bridge.saveSettings({
+    openaiModel: elements.assistantModelSelect.value
+  });
+  state.settings = settings;
   renderSettings();
 });
 
@@ -546,7 +599,6 @@ elements.replaceAssistantButton.addEventListener('click', () => {
 document.querySelector('#saveSettingsButton').addEventListener('click', async () => {
   const settings = await bridge.saveSettings({
     openaiApiKey: elements.openaiApiKeyInput.value.trim(),
-    openaiModel: elements.openaiModelInput.value.trim(),
     wechatAppId: elements.wechatAppIdInput.value.trim(),
     wechatAppSecret: elements.wechatAppSecretInput.value.trim()
   });
@@ -554,6 +606,12 @@ document.querySelector('#saveSettingsButton').addEventListener('click', async ()
   elements.openaiApiKeyInput.value = '';
   elements.wechatAppSecretInput.value = '';
   renderSettings();
+});
+
+elements.openChatGptButton.addEventListener('click', async () => {
+  if (bridge.openChatGptLogin) {
+    await bridge.openChatGptLogin();
+  }
 });
 
 document.querySelector('#testWechatButton').addEventListener('click', async (event) => {
@@ -636,6 +694,9 @@ window.addEventListener('keydown', (event) => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
     event.preventDefault();
     saveCurrentArticle();
+  }
+  if (event.key === 'Escape' && !elements.settingsModal.hidden) {
+    closeSettings();
   }
 });
 

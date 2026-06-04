@@ -1,6 +1,6 @@
 const path = require('node:path');
 const fs = require('node:fs');
-const { app, BrowserWindow, dialog, ipcMain, safeStorage } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, safeStorage, shell } = require('electron');
 const { DEFAULT_MODEL, runWritingAssistant } = require('./services/openaiClient');
 const { createDraft, getPublishStatus, submitPublish, testConnection } = require('./services/wechatClient');
 
@@ -312,8 +312,12 @@ ipcMain.handle('articles:delete', (_event, articleId) => {
 
 ipcMain.handle('settings:save', (_event, payload) => {
   const data = readData();
-  data.settings.openaiModel = payload.openaiModel || DEFAULT_MODEL;
-  data.settings.wechatAppId = payload.wechatAppId || '';
+  if (Object.hasOwn(payload, 'openaiModel')) {
+    data.settings.openaiModel = payload.openaiModel || DEFAULT_MODEL;
+  }
+  if (Object.hasOwn(payload, 'wechatAppId')) {
+    data.settings.wechatAppId = payload.wechatAppId || '';
+  }
 
   if (payload.openaiApiKey) {
     data.settings.openaiApiKey = encodeSecret(payload.openaiApiKey);
@@ -324,6 +328,11 @@ ipcMain.handle('settings:save', (_event, payload) => {
 
   writeData(data);
   return getPublicSettings();
+});
+
+ipcMain.handle('account:openChatGpt', async () => {
+  await shell.openExternal('https://chatgpt.com/auth/login');
+  return true;
 });
 
 ipcMain.handle('dialog:chooseImage', async () => {

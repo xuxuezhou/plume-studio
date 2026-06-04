@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('writingDesk', {
   saveSettings: (settings) => ipcRenderer.invoke('settings:save', settings),
   chooseImage: () => ipcRenderer.invoke('dialog:chooseImage'),
   runAssistant: (payload) => ipcRenderer.invoke('assistant:run', payload),
+  openChatGptLogin: () => ipcRenderer.invoke('account:openChatGpt'),
   testWechat: () => ipcRenderer.invoke('wechat:test'),
   createWechatDraft: (payload) => ipcRenderer.invoke('wechat:createDraft', payload),
   publishWechatDraft: (payload) => ipcRenderer.invoke('wechat:publish', payload),
