@@ -9,74 +9,80 @@
   <body>
     <div class="app-shell">
       <aside class="sidebar">
-        <div class="brand">
-          <div>
-            <h1>WeWrite Studio</h1>
-            <p id="dataPath"></p>
-          </div>
-          <button class="icon-button" id="newArticleButton" title="New article">+</button>
-        </div>
-        <div class="article-list" id="articleList"></div>
+        <div class="rail-brand" title="WeWrite Studio">W</div>
+        <button class="rail-button" id="newArticleButton" title="New draft">+</button>
+        <button class="rail-button active" id="toggleDraftsButton" title="Toggle drafts">D</button>
+        <button class="rail-button" id="themeButton" title="Toggle theme">Dark</button>
+        <button class="rail-button" id="toggleInspectorButton" title="Toggle panel">P</button>
+        <div class="rail-spacer"></div>
+        <p class="rail-caption">WeWrite</p>
       </aside>
 
-      <div class="resize-handle outer-handle" id="sidebarResizeHandle" title="Resize library"></div>
+      <aside class="draft-drawer">
+        <div class="drawer-header">
+          <div>
+            <span class="eyebrow">Library</span>
+            <h2>Drafts</h2>
+          </div>
+          <span id="draftCount" class="count-pill">0</span>
+        </div>
+        <div class="article-list" id="articleList"></div>
+        <p id="dataPath" class="data-path"></p>
+      </aside>
+
+      <div class="resize-handle" id="draftResizeHandle" title="Resize drafts"></div>
 
       <main class="workspace">
-        <header class="editor-header">
-          <div class="title-stack">
-            <input id="titleInput" class="title-input" placeholder="Article title" />
-            <div class="meta-row">
-              <input id="authorInput" placeholder="Author" />
-              <input id="digestInput" placeholder="Digest" />
-            </div>
-          </div>
-          <div class="header-actions">
-            <button id="toggleSidebarButton">Library</button>
-            <button id="toggleInspectorButton">Panel</button>
-            <button id="themeButton">Dark</button>
-            <button id="saveButton">Save</button>
-            <button class="danger" id="deleteButton">Delete</button>
+        <header class="paperbar">
+          <nav class="paper-tabs" aria-label="Document tools">
+            <button class="paper-tab active">Draft</button>
+            <button class="paper-tab" id="chooseCoverButton">Cover</button>
+            <button class="paper-tab" id="saveButton">Save</button>
+            <button class="paper-tab danger" id="deleteButton">Delete</button>
+          </nav>
+          <div class="paper-actions">
+            <label><input id="showCoverInput" type="checkbox" /> Cover</label>
+            <label><input id="openCommentInput" type="checkbox" /> Comments</label>
           </div>
         </header>
 
-        <section class="editor-grid" id="editorGrid">
-          <div class="write-pane">
-            <div class="pane-toolbar">
-              <span>Draft</span>
-              <button id="chooseCoverButton">Cover</button>
+        <section class="editor-stage">
+          <article class="editor-sheet">
+            <div class="doc-kicker">Local WeChat Draft</div>
+            <textarea id="titleInput" class="title-input" placeholder="Article title" rows="2"></textarea>
+            <div class="meta-grid">
+              <input id="authorInput" placeholder="Author" />
+              <input id="digestInput" placeholder="Digest" />
             </div>
             <textarea id="contentInput" spellcheck="false"></textarea>
             <div class="field-line">
               <input id="coverPathInput" placeholder="Cover image path" />
               <input id="sourceUrlInput" placeholder="Source URL" />
             </div>
-          </div>
-
-          <div class="resize-handle inner-handle" id="editorResizeHandle" title="Resize editor"></div>
-
-          <div class="preview-pane">
-            <div class="pane-toolbar">
-              <span>Preview</span>
-              <div class="toggle-row">
-                <label><input id="showCoverInput" type="checkbox" /> Show cover</label>
-                <label><input id="openCommentInput" type="checkbox" /> Comments</label>
-              </div>
-            </div>
-            <article id="preview"></article>
-          </div>
+          </article>
         </section>
       </main>
 
-      <div class="resize-handle outer-handle" id="inspectorResizeHandle" title="Resize panel"></div>
+      <div class="resize-handle" id="inspectorResizeHandle" title="Resize panel"></div>
 
       <aside class="inspector">
         <div class="tabs">
-          <button class="tab active" data-tab="assistant">AI</button>
-          <button class="tab" data-tab="wechat">WeChat</button>
+          <button class="tab active" data-tab="preview">Preview</button>
+          <button class="tab" data-tab="assistant">Assistant</button>
+          <button class="tab" data-tab="publish">Publish</button>
           <button class="tab" data-tab="settings">Settings</button>
         </div>
 
-        <section class="panel active" id="assistantPanel">
+        <section class="panel active" id="previewPanel">
+          <article id="preview"></article>
+        </section>
+
+        <section class="panel" id="assistantPanel">
+          <div class="assistant-hero">
+            <div class="spark">✧</div>
+            <h2>Writing Assistant</h2>
+            <p>Work from the selected text or the full draft.</p>
+          </div>
           <div class="tool-grid">
             <button data-action="outline">Outline</button>
             <button data-action="titles">Titles</button>
@@ -93,7 +99,7 @@
           </div>
         </section>
 
-        <section class="panel" id="wechatPanel">
+        <section class="panel" id="publishPanel">
           <div class="status-strip" id="wechatStatus">Not connected</div>
           <button id="testWechatButton">Test Connection</button>
           <button id="createDraftButton">Send to Draft Box</button>

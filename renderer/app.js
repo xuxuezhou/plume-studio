@@ -11,7 +11,7 @@ function createPreviewBridge() {
     openComment: false,
     fansOnlyComment: false,
     contentMarkdown:
-      '## Start with the draft\n\nThis preview runs without Electron so the layout can be checked in a browser.\n\n- Drag the vertical handles to resize columns\n- Hide the library or AI panel from the header\n- Switch between light and dark mode\n\nWhen the Mac app runs, these controls use the real local data and publishing services.',
+      '## Start with the draft\n\nThis preview runs without Electron so the layout can be checked in a browser.\n\n- Use the left sheet as the writing surface\n- Keep preview, assistant, publishing, and settings in the right rail\n- Resize or hide the draft drawer and tool panel\n\nWhen the Mac app runs, these controls use the real local data and publishing services.',
     wechat: {
       draftMediaId: '',
       publishId: '',
@@ -69,10 +69,9 @@ const bridge = window.writingDesk || createPreviewBridge();
 
 const DEFAULT_LAYOUT = {
   theme: 'light',
-  sidebarWidth: 292,
-  inspectorWidth: 356,
-  writerWidth: 560,
-  sidebarHidden: false,
+  drawerWidth: 248,
+  inspectorWidth: 520,
+  draftsHidden: false,
   inspectorHidden: false
 };
 
@@ -97,17 +96,16 @@ const elements = {
   openCommentInput: document.querySelector('#openCommentInput'),
   contentInput: document.querySelector('#contentInput'),
   preview: document.querySelector('#preview'),
-  editorGrid: document.querySelector('#editorGrid'),
   saveButton: document.querySelector('#saveButton'),
   deleteButton: document.querySelector('#deleteButton'),
   newArticleButton: document.querySelector('#newArticleButton'),
   chooseCoverButton: document.querySelector('#chooseCoverButton'),
-  toggleSidebarButton: document.querySelector('#toggleSidebarButton'),
+  toggleDraftsButton: document.querySelector('#toggleDraftsButton'),
   toggleInspectorButton: document.querySelector('#toggleInspectorButton'),
   themeButton: document.querySelector('#themeButton'),
-  sidebarResizeHandle: document.querySelector('#sidebarResizeHandle'),
+  draftResizeHandle: document.querySelector('#draftResizeHandle'),
   inspectorResizeHandle: document.querySelector('#inspectorResizeHandle'),
-  editorResizeHandle: document.querySelector('#editorResizeHandle'),
+  draftCount: document.querySelector('#draftCount'),
   assistantNote: document.querySelector('#assistantNote'),
   assistantOutput: document.querySelector('#assistantOutput'),
   insertAssistantButton: document.querySelector('#insertAssistantButton'),
@@ -127,9 +125,19 @@ const elements = {
 
 function loadLayout() {
   try {
+    const stored = JSON.parse(localStorage.getItem('wewrite-layout') || '{}');
     return {
       ...DEFAULT_LAYOUT,
-      ...JSON.parse(localStorage.getItem('wewrite-layout') || '{}')
+      ...stored,
+      drawerWidth: stored.drawerWidth || stored.sidebarWidth || DEFAULT_LAYOUT.drawerWidth,
+      inspectorWidth:
+        stored.inspectorWidth && stored.inspectorWidth >= 420
+          ? stored.inspectorWidth
+          : DEFAULT_LAYOUT.inspectorWidth,
+      draftsHidden:
+        typeof stored.draftsHidden === 'boolean'
+          ? stored.draftsHidden
+          : Boolean(stored.sidebarHidden)
     };
   } catch {
     return { ...DEFAULT_LAYOUT };
@@ -146,20 +154,18 @@ function clamp(value, min, max) {
 
 function applyLayout() {
   const root = document.documentElement;
-  root.style.setProperty('--sidebar-width', `${state.layout.sidebarWidth}px`);
+  root.style.setProperty('--drawer-width', `${state.layout.drawerWidth}px`);
   root.style.setProperty('--inspector-width', `${state.layout.inspectorWidth}px`);
-  root.style.setProperty('--writer-width', `${state.layout.writerWidth}px`);
 
   document.body.dataset.theme = state.layout.theme;
-  document.body.classList.toggle('sidebar-hidden', state.layout.sidebarHidden);
+  document.body.classList.toggle('drafts-hidden', state.layout.draftsHidden);
   document.body.classList.toggle('inspector-hidden', state.layout.inspectorHidden);
 
-  elements.themeButton.textContent = state.layout.theme === 'dark' ? 'Light' : 'Dark';
-  elements.toggleSidebarButton.textContent = 'Library';
-  elements.toggleInspectorButton.textContent = 'Panel';
-  elements.toggleSidebarButton.title = state.layout.sidebarHidden ? 'Show library' : 'Hide library';
-  elements.toggleInspectorButton.title = state.layout.inspectorHidden ? 'Show side panel' : 'Hide side panel';
-  elements.toggleSidebarButton.classList.toggle('is-off', state.layout.sidebarHidden);
+  elements.themeButton.textContent = state.layout.theme === 'dark' ? 'L' : 'D';
+  elements.themeButton.title = state.layout.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+  elements.toggleDraftsButton.title = state.layout.draftsHidden ? 'Show drafts' : 'Hide drafts';
+  elements.toggleInspectorButton.title = state.layout.inspectorHidden ? 'Show panel' : 'Hide panel';
+  elements.toggleDraftsButton.classList.toggle('is-off', state.layout.draftsHidden);
   elements.toggleInspectorButton.classList.toggle('is-off', state.layout.inspectorHidden);
 }
 
@@ -264,6 +270,7 @@ function getEditorArticle() {
 
 function renderArticleList() {
   elements.articleList.innerHTML = '';
+  elements.draftCount.textContent = String(state.articles.length);
   for (const article of state.articles) {
     const button = document.createElement('button');
     button.className = `article-item ${article.id === state.activeId ? 'active' : ''}`;
@@ -316,7 +323,7 @@ function renderSettings() {
     `OpenAI key: ${state.settings.hasOpenaiApiKey ? 'saved' : 'not saved'}`,
     `WeChat AppSecret: ${state.settings.hasWechatAppSecret ? 'saved' : 'not saved'}`,
     `Theme: ${state.layout.theme}`,
-    `Layout: library ${state.layout.sidebarHidden ? 'hidden' : `${state.layout.sidebarWidth}px`}, panel ${
+    `Layout: drafts ${state.layout.draftsHidden ? 'hidden' : `${state.layout.drawerWidth}px`}, panel ${
       state.layout.inspectorHidden ? 'hidden' : `${state.layout.inspectorWidth}px`
     }`
   ].join('\n');
@@ -383,22 +390,17 @@ function startResize(kind, event) {
   event.preventDefault();
   const startX = event.clientX;
   const start = {
-    sidebarWidth: state.layout.sidebarWidth,
-    inspectorWidth: state.layout.inspectorWidth,
-    writerWidth: state.layout.writerWidth
+    drawerWidth: state.layout.drawerWidth,
+    inspectorWidth: state.layout.inspectorWidth
   };
-  const editorWidth = elements.editorGrid.getBoundingClientRect().width;
 
   function move(pointerEvent) {
     const delta = pointerEvent.clientX - startX;
-    if (kind === 'sidebar') {
-      state.layout.sidebarWidth = clamp(start.sidebarWidth + delta, 220, 460);
+    if (kind === 'drafts') {
+      state.layout.drawerWidth = clamp(start.drawerWidth + delta, 208, 420);
     }
     if (kind === 'inspector') {
-      state.layout.inspectorWidth = clamp(start.inspectorWidth - delta, 280, 520);
-    }
-    if (kind === 'editor') {
-      state.layout.writerWidth = clamp(start.writerWidth + delta, 320, Math.max(340, editorWidth - 320));
+      state.layout.inspectorWidth = clamp(start.inspectorWidth - delta, 360, 680);
     }
     applyLayout();
   }
@@ -425,9 +427,8 @@ document.querySelectorAll('.tab').forEach((tab) => {
   });
 });
 
-elements.sidebarResizeHandle.addEventListener('pointerdown', (event) => startResize('sidebar', event));
+elements.draftResizeHandle.addEventListener('pointerdown', (event) => startResize('drafts', event));
 elements.inspectorResizeHandle.addEventListener('pointerdown', (event) => startResize('inspector', event));
-elements.editorResizeHandle.addEventListener('pointerdown', (event) => startResize('editor', event));
 
 elements.themeButton.addEventListener('click', () => {
   state.layout.theme = state.layout.theme === 'dark' ? 'light' : 'dark';
@@ -436,8 +437,8 @@ elements.themeButton.addEventListener('click', () => {
   renderSettings();
 });
 
-elements.toggleSidebarButton.addEventListener('click', () => {
-  state.layout.sidebarHidden = !state.layout.sidebarHidden;
+elements.toggleDraftsButton.addEventListener('click', () => {
+  state.layout.draftsHidden = !state.layout.draftsHidden;
   applyLayout();
   saveLayout();
   renderSettings();
@@ -634,12 +635,6 @@ window.addEventListener('keydown', (event) => {
     event.preventDefault();
     saveCurrentArticle();
   }
-});
-
-window.addEventListener('resize', () => {
-  const editorWidth = elements.editorGrid.getBoundingClientRect().width;
-  state.layout.writerWidth = clamp(state.layout.writerWidth, 320, Math.max(340, editorWidth - 320));
-  applyLayout();
 });
 
 applyLayout();
