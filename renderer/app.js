@@ -1,8 +1,85 @@
-const bridge = window.writingDesk;
+function createPreviewBridge() {
+  const timestamp = new Date().toISOString();
+  let article = {
+    id: 'preview_article',
+    title: 'Designing a Local Writing Workflow',
+    author: 'Allen',
+    digest: 'A calm desk for drafting, editing, and shipping WeChat articles with AI support.',
+    sourceUrl: '',
+    coverPath: '',
+    showCover: true,
+    openComment: false,
+    fansOnlyComment: false,
+    contentMarkdown:
+      '## Start with the draft\n\nThis preview runs without Electron so the layout can be checked in a browser.\n\n- Drag the vertical handles to resize columns\n- Hide the library or AI panel from the header\n- Switch between light and dark mode\n\nWhen the Mac app runs, these controls use the real local data and publishing services.',
+    wechat: {
+      draftMediaId: '',
+      publishId: '',
+      articleId: '',
+      lastStatus: ''
+    },
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+
+  return {
+    loadData: async () => ({
+      articles: [article],
+      settings: {
+        openaiModel: 'gpt-5.4-mini',
+        hasOpenaiApiKey: false,
+        wechatAppId: '',
+        hasWechatAppSecret: false
+      },
+      dataPath: 'Browser preview'
+    }),
+    createArticle: async () => ({ ...article, id: `preview_${Date.now()}`, title: 'Untitled Article' }),
+    saveArticle: async (nextArticle) => {
+      article = { ...nextArticle, updatedAt: new Date().toISOString() };
+      return article;
+    },
+    deleteArticle: async () => ({ articles: [], settings: {}, dataPath: 'Browser preview' }),
+    saveSettings: async (settings) => ({
+      openaiModel: settings.openaiModel || 'gpt-5.4-mini',
+      hasOpenaiApiKey: Boolean(settings.openaiApiKey),
+      wechatAppId: settings.wechatAppId || '',
+      hasWechatAppSecret: Boolean(settings.wechatAppSecret)
+    }),
+    chooseImage: async () => '',
+    runAssistant: async ({ action }) => ({
+      action,
+      label: action,
+      text: 'Browser preview mode: AI calls are available in the packaged Mac app after you add an OpenAI API key.',
+      model: 'gpt-5.4-mini'
+    }),
+    testWechat: async () => ({ ok: true, tokenPreview: 'preview-token' }),
+    createWechatDraft: async ({ article: nextArticle }) => ({
+      result: { mediaId: 'preview_media_id', coverMediaId: 'preview_cover_id' },
+      article: {
+        ...nextArticle,
+        wechat: { ...(nextArticle.wechat || {}), draftMediaId: 'preview_media_id' }
+      }
+    }),
+    publishWechatDraft: async () => ({ publishId: 'preview_publish_id' }),
+    getWechatStatus: async () => ({ publish_id: 'preview_publish_id', publish_status: 0 })
+  };
+}
+
+const bridge = window.writingDesk || createPreviewBridge();
+
+const DEFAULT_LAYOUT = {
+  theme: 'light',
+  sidebarWidth: 292,
+  inspectorWidth: 356,
+  writerWidth: 560,
+  sidebarHidden: false,
+  inspectorHidden: false
+};
 
 const state = {
   articles: [],
   settings: {},
+  layout: loadLayout(),
   activeId: '',
   assistantText: '',
   saving: false
@@ -20,10 +97,17 @@ const elements = {
   openCommentInput: document.querySelector('#openCommentInput'),
   contentInput: document.querySelector('#contentInput'),
   preview: document.querySelector('#preview'),
+  editorGrid: document.querySelector('#editorGrid'),
   saveButton: document.querySelector('#saveButton'),
   deleteButton: document.querySelector('#deleteButton'),
   newArticleButton: document.querySelector('#newArticleButton'),
   chooseCoverButton: document.querySelector('#chooseCoverButton'),
+  toggleSidebarButton: document.querySelector('#toggleSidebarButton'),
+  toggleInspectorButton: document.querySelector('#toggleInspectorButton'),
+  themeButton: document.querySelector('#themeButton'),
+  sidebarResizeHandle: document.querySelector('#sidebarResizeHandle'),
+  inspectorResizeHandle: document.querySelector('#inspectorResizeHandle'),
+  editorResizeHandle: document.querySelector('#editorResizeHandle'),
   assistantNote: document.querySelector('#assistantNote'),
   assistantOutput: document.querySelector('#assistantOutput'),
   insertAssistantButton: document.querySelector('#insertAssistantButton'),
@@ -37,8 +121,47 @@ const elements = {
   openaiModelInput: document.querySelector('#openaiModelInput'),
   wechatAppIdInput: document.querySelector('#wechatAppIdInput'),
   wechatAppSecretInput: document.querySelector('#wechatAppSecretInput'),
-  settingsState: document.querySelector('#settingsState')
+  settingsState: document.querySelector('#settingsState'),
+  resetLayoutButton: document.querySelector('#resetLayoutButton')
 };
+
+function loadLayout() {
+  try {
+    return {
+      ...DEFAULT_LAYOUT,
+      ...JSON.parse(localStorage.getItem('wewrite-layout') || '{}')
+    };
+  } catch {
+    return { ...DEFAULT_LAYOUT };
+  }
+}
+
+function saveLayout() {
+  localStorage.setItem('wewrite-layout', JSON.stringify(state.layout));
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function applyLayout() {
+  const root = document.documentElement;
+  root.style.setProperty('--sidebar-width', `${state.layout.sidebarWidth}px`);
+  root.style.setProperty('--inspector-width', `${state.layout.inspectorWidth}px`);
+  root.style.setProperty('--writer-width', `${state.layout.writerWidth}px`);
+
+  document.body.dataset.theme = state.layout.theme;
+  document.body.classList.toggle('sidebar-hidden', state.layout.sidebarHidden);
+  document.body.classList.toggle('inspector-hidden', state.layout.inspectorHidden);
+
+  elements.themeButton.textContent = state.layout.theme === 'dark' ? 'Light' : 'Dark';
+  elements.toggleSidebarButton.textContent = 'Library';
+  elements.toggleInspectorButton.textContent = 'Panel';
+  elements.toggleSidebarButton.title = state.layout.sidebarHidden ? 'Show library' : 'Hide library';
+  elements.toggleInspectorButton.title = state.layout.inspectorHidden ? 'Show side panel' : 'Hide side panel';
+  elements.toggleSidebarButton.classList.toggle('is-off', state.layout.sidebarHidden);
+  elements.toggleInspectorButton.classList.toggle('is-off', state.layout.inspectorHidden);
+}
 
 function activeArticle() {
   return state.articles.find((article) => article.id === state.activeId) || state.articles[0];
@@ -114,7 +237,18 @@ function markdownToHtml(markdown = '') {
 }
 
 function getEditorArticle() {
-  const article = activeArticle();
+  const article = activeArticle() || {
+    id: `draft_${Date.now()}`,
+    title: '',
+    author: '',
+    digest: '',
+    sourceUrl: '',
+    coverPath: '',
+    showCover: true,
+    openComment: false,
+    contentMarkdown: '',
+    wechat: {}
+  };
   return {
     ...article,
     title: elements.titleInput.value.trim(),
@@ -134,7 +268,7 @@ function renderArticleList() {
     const button = document.createElement('button');
     button.className = `article-item ${article.id === state.activeId ? 'active' : ''}`;
     button.innerHTML = `
-      <span class="article-title">${escapeHtml(article.title || '未命名文章')}</span>
+      <span class="article-title">${escapeHtml(article.title || 'Untitled Article')}</span>
       <span class="article-meta">${escapeHtml(article.digest || article.updatedAt || '')}</span>
     `;
     button.addEventListener('click', async () => {
@@ -169,7 +303,7 @@ function renderPreview() {
   const article = getEditorArticle();
   const html = markdownToHtml(article.contentMarkdown);
   elements.preview.innerHTML = `
-    <h1>${escapeHtml(article.title || '未命名文章')}</h1>
+    <h1>${escapeHtml(article.title || 'Untitled Article')}</h1>
     ${article.digest ? `<blockquote>${escapeHtml(article.digest)}</blockquote>` : ''}
     ${html}
   `;
@@ -179,12 +313,17 @@ function renderSettings() {
   elements.openaiModelInput.value = state.settings.openaiModel || 'gpt-5.4-mini';
   elements.wechatAppIdInput.value = state.settings.wechatAppId || '';
   elements.settingsState.textContent = [
-    `OpenAI Key：${state.settings.hasOpenaiApiKey ? '已保存' : '未保存'}`,
-    `微信 AppSecret：${state.settings.hasWechatAppSecret ? '已保存' : '未保存'}`
+    `OpenAI key: ${state.settings.hasOpenaiApiKey ? 'saved' : 'not saved'}`,
+    `WeChat AppSecret: ${state.settings.hasWechatAppSecret ? 'saved' : 'not saved'}`,
+    `Theme: ${state.layout.theme}`,
+    `Layout: library ${state.layout.sidebarHidden ? 'hidden' : `${state.layout.sidebarWidth}px`}, panel ${
+      state.layout.inspectorHidden ? 'hidden' : `${state.layout.inspectorWidth}px`
+    }`
   ].join('\n');
 }
 
 function render() {
+  applyLayout();
   renderArticleList();
   renderEditor();
   renderSettings();
@@ -219,9 +358,9 @@ async function saveCurrentArticle({ quiet = false } = {}) {
       state.articles[index] = saved;
     }
     if (!quiet) {
-      elements.saveButton.textContent = '已保存';
+      elements.saveButton.textContent = 'Saved';
       window.setTimeout(() => {
-        elements.saveButton.textContent = '保存';
+        elements.saveButton.textContent = 'Save';
       }, 900);
     }
     renderArticleList();
@@ -240,6 +379,43 @@ async function load() {
   render();
 }
 
+function startResize(kind, event) {
+  event.preventDefault();
+  const startX = event.clientX;
+  const start = {
+    sidebarWidth: state.layout.sidebarWidth,
+    inspectorWidth: state.layout.inspectorWidth,
+    writerWidth: state.layout.writerWidth
+  };
+  const editorWidth = elements.editorGrid.getBoundingClientRect().width;
+
+  function move(pointerEvent) {
+    const delta = pointerEvent.clientX - startX;
+    if (kind === 'sidebar') {
+      state.layout.sidebarWidth = clamp(start.sidebarWidth + delta, 220, 460);
+    }
+    if (kind === 'inspector') {
+      state.layout.inspectorWidth = clamp(start.inspectorWidth - delta, 280, 520);
+    }
+    if (kind === 'editor') {
+      state.layout.writerWidth = clamp(start.writerWidth + delta, 320, Math.max(340, editorWidth - 320));
+    }
+    applyLayout();
+  }
+
+  function stop() {
+    document.body.classList.remove('resizing');
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', stop);
+    saveLayout();
+    renderSettings();
+  }
+
+  document.body.classList.add('resizing');
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', stop);
+}
+
 document.querySelectorAll('.tab').forEach((tab) => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach((item) => item.classList.remove('active'));
@@ -247,6 +423,38 @@ document.querySelectorAll('.tab').forEach((tab) => {
     tab.classList.add('active');
     document.querySelector(`#${tab.dataset.tab}Panel`).classList.add('active');
   });
+});
+
+elements.sidebarResizeHandle.addEventListener('pointerdown', (event) => startResize('sidebar', event));
+elements.inspectorResizeHandle.addEventListener('pointerdown', (event) => startResize('inspector', event));
+elements.editorResizeHandle.addEventListener('pointerdown', (event) => startResize('editor', event));
+
+elements.themeButton.addEventListener('click', () => {
+  state.layout.theme = state.layout.theme === 'dark' ? 'light' : 'dark';
+  applyLayout();
+  saveLayout();
+  renderSettings();
+});
+
+elements.toggleSidebarButton.addEventListener('click', () => {
+  state.layout.sidebarHidden = !state.layout.sidebarHidden;
+  applyLayout();
+  saveLayout();
+  renderSettings();
+});
+
+elements.toggleInspectorButton.addEventListener('click', () => {
+  state.layout.inspectorHidden = !state.layout.inspectorHidden;
+  applyLayout();
+  saveLayout();
+  renderSettings();
+});
+
+elements.resetLayoutButton.addEventListener('click', () => {
+  state.layout = { ...DEFAULT_LAYOUT };
+  applyLayout();
+  saveLayout();
+  renderSettings();
 });
 
 elements.newArticleButton.addEventListener('click', async () => {
@@ -262,7 +470,7 @@ elements.saveButton.addEventListener('click', () => saveCurrentArticle());
 elements.deleteButton.addEventListener('click', async () => {
   const article = activeArticle();
   if (!article) return;
-  if (!window.confirm(`删除《${article.title || '未命名文章'}》？`)) return;
+  if (!window.confirm(`Delete "${article.title || 'Untitled Article'}"?`)) return;
   const data = await bridge.deleteArticle(article.id);
   state.articles = data.articles || [];
   state.activeId = state.articles[0]?.id || '';
@@ -297,7 +505,7 @@ document.querySelectorAll('[data-action]').forEach((button) => {
       elements.contentInput.selectionStart,
       elements.contentInput.selectionEnd
     );
-    setBusy(button, true, '处理中');
+    setBusy(button, true, 'Working');
     elements.assistantOutput.textContent = '';
     try {
       const result = await bridge.runAssistant({
@@ -346,13 +554,13 @@ document.querySelector('#saveSettingsButton').addEventListener('click', async ()
 });
 
 document.querySelector('#testWechatButton').addEventListener('click', async (event) => {
-  setBusy(event.currentTarget, true, '测试中');
+  setBusy(event.currentTarget, true, 'Testing');
   try {
     const result = await bridge.testWechat();
-    elements.wechatStatus.textContent = `已连接：${result.tokenPreview}`;
+    elements.wechatStatus.textContent = `Connected: ${result.tokenPreview}`;
     setWechatLog(result);
   } catch (error) {
-    elements.wechatStatus.textContent = '连接失败';
+    elements.wechatStatus.textContent = 'Connection failed';
     setWechatLog(error.message);
   } finally {
     setBusy(event.currentTarget, false);
@@ -361,7 +569,7 @@ document.querySelector('#testWechatButton').addEventListener('click', async (eve
 
 document.querySelector('#createDraftButton').addEventListener('click', async (event) => {
   const article = await saveCurrentArticle({ quiet: true });
-  setBusy(event.currentTarget, true, '推送中');
+  setBusy(event.currentTarget, true, 'Sending');
   try {
     const response = await bridge.createWechatDraft({
       article,
@@ -384,11 +592,11 @@ document.querySelector('#publishButton').addEventListener('click', async (event)
   const article = activeArticle();
   const mediaId = elements.draftMediaIdInput.value || article?.wechat?.draftMediaId;
   if (!mediaId) {
-    setWechatLog('缺少 draft media_id。');
+    setWechatLog('Missing draft media_id.');
     return;
   }
-  if (!window.confirm('确认提交发布？提交后会进入微信公众号发布流程。')) return;
-  setBusy(event.currentTarget, true, '提交中');
+  if (!window.confirm('Submit this draft to the WeChat publishing flow?')) return;
+  setBusy(event.currentTarget, true, 'Submitting');
   try {
     const result = await bridge.publishWechatDraft({ articleId: article.id, mediaId });
     elements.publishIdInput.value = result.publishId;
@@ -404,10 +612,10 @@ document.querySelector('#statusButton').addEventListener('click', async (event) 
   const article = activeArticle();
   const publishId = elements.publishIdInput.value || article?.wechat?.publishId;
   if (!publishId) {
-    setWechatLog('缺少 publish_id。');
+    setWechatLog('Missing publish_id.');
     return;
   }
-  setBusy(event.currentTarget, true, '查询中');
+  setBusy(event.currentTarget, true, 'Checking');
   try {
     const result = await bridge.getWechatStatus({ articleId: article.id, publishId });
     if (result.article_id) {
@@ -428,4 +636,11 @@ window.addEventListener('keydown', (event) => {
   }
 });
 
+window.addEventListener('resize', () => {
+  const editorWidth = elements.editorGrid.getBoundingClientRect().width;
+  state.layout.writerWidth = clamp(state.layout.writerWidth, 320, Math.max(340, editorWidth - 320));
+  applyLayout();
+});
+
+applyLayout();
 load();

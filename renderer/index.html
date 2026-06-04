@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>公众号写作台</title>
+    <title>WeWrite Studio</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -11,47 +11,55 @@
       <aside class="sidebar">
         <div class="brand">
           <div>
-            <h1>公众号写作台</h1>
+            <h1>WeWrite Studio</h1>
             <p id="dataPath"></p>
           </div>
-          <button class="icon-button" id="newArticleButton" title="新建文章">+</button>
+          <button class="icon-button" id="newArticleButton" title="New article">+</button>
         </div>
         <div class="article-list" id="articleList"></div>
       </aside>
 
+      <div class="resize-handle outer-handle" id="sidebarResizeHandle" title="Resize library"></div>
+
       <main class="workspace">
         <header class="editor-header">
           <div class="title-stack">
-            <input id="titleInput" class="title-input" placeholder="文章标题" />
+            <input id="titleInput" class="title-input" placeholder="Article title" />
             <div class="meta-row">
-              <input id="authorInput" placeholder="作者" />
-              <input id="digestInput" placeholder="摘要" />
+              <input id="authorInput" placeholder="Author" />
+              <input id="digestInput" placeholder="Digest" />
             </div>
           </div>
           <div class="header-actions">
-            <button id="saveButton">保存</button>
-            <button class="danger" id="deleteButton">删除</button>
+            <button id="toggleSidebarButton">Library</button>
+            <button id="toggleInspectorButton">Panel</button>
+            <button id="themeButton">Dark</button>
+            <button id="saveButton">Save</button>
+            <button class="danger" id="deleteButton">Delete</button>
           </div>
         </header>
 
-        <section class="editor-grid">
+        <section class="editor-grid" id="editorGrid">
           <div class="write-pane">
             <div class="pane-toolbar">
-              <span>正文</span>
-              <button id="chooseCoverButton">封面图</button>
+              <span>Draft</span>
+              <button id="chooseCoverButton">Cover</button>
             </div>
             <textarea id="contentInput" spellcheck="false"></textarea>
             <div class="field-line">
-              <input id="coverPathInput" placeholder="封面图路径" />
-              <input id="sourceUrlInput" placeholder="原文链接" />
+              <input id="coverPathInput" placeholder="Cover image path" />
+              <input id="sourceUrlInput" placeholder="Source URL" />
             </div>
           </div>
+
+          <div class="resize-handle inner-handle" id="editorResizeHandle" title="Resize editor"></div>
+
           <div class="preview-pane">
             <div class="pane-toolbar">
-              <span>预览</span>
+              <span>Preview</span>
               <div class="toggle-row">
-                <label><input id="showCoverInput" type="checkbox" /> 显示封面</label>
-                <label><input id="openCommentInput" type="checkbox" /> 开评论</label>
+                <label><input id="showCoverInput" type="checkbox" /> Show cover</label>
+                <label><input id="openCommentInput" type="checkbox" /> Comments</label>
               </div>
             </div>
             <article id="preview"></article>
@@ -59,36 +67,38 @@
         </section>
       </main>
 
+      <div class="resize-handle outer-handle" id="inspectorResizeHandle" title="Resize panel"></div>
+
       <aside class="inspector">
         <div class="tabs">
           <button class="tab active" data-tab="assistant">AI</button>
-          <button class="tab" data-tab="wechat">微信</button>
-          <button class="tab" data-tab="settings">设置</button>
+          <button class="tab" data-tab="wechat">WeChat</button>
+          <button class="tab" data-tab="settings">Settings</button>
         </div>
 
         <section class="panel active" id="assistantPanel">
           <div class="tool-grid">
-            <button data-action="outline">提纲</button>
-            <button data-action="titles">标题</button>
-            <button data-action="rewrite">改写</button>
-            <button data-action="summary">摘要</button>
-            <button data-action="review">审稿</button>
-            <button data-action="format">排版</button>
+            <button data-action="outline">Outline</button>
+            <button data-action="titles">Titles</button>
+            <button data-action="rewrite">Rewrite</button>
+            <button data-action="summary">Digest</button>
+            <button data-action="review">Review</button>
+            <button data-action="format">Format</button>
           </div>
-          <textarea id="assistantNote" class="small-textarea" placeholder="补充要求"></textarea>
+          <textarea id="assistantNote" class="small-textarea" placeholder="Extra instructions"></textarea>
           <div class="assistant-output" id="assistantOutput"></div>
           <div class="split-actions">
-            <button id="insertAssistantButton">插入</button>
-            <button id="replaceAssistantButton">替换正文</button>
+            <button id="insertAssistantButton">Insert</button>
+            <button id="replaceAssistantButton">Replace Draft</button>
           </div>
         </section>
 
         <section class="panel" id="wechatPanel">
-          <div class="status-strip" id="wechatStatus">未连接</div>
-          <button id="testWechatButton">测试连接</button>
-          <button id="createDraftButton">推送草稿箱</button>
-          <button id="publishButton">提交发布</button>
-          <button id="statusButton">查询状态</button>
+          <div class="status-strip" id="wechatStatus">Not connected</div>
+          <button id="testWechatButton">Test Connection</button>
+          <button id="createDraftButton">Send to Draft Box</button>
+          <button id="publishButton">Submit Publish</button>
+          <button id="statusButton">Check Status</button>
           <div class="publish-fields">
             <label>draft media_id</label>
             <input id="draftMediaIdInput" readonly />
@@ -102,14 +112,15 @@
 
         <section class="panel" id="settingsPanel">
           <label>OpenAI API Key</label>
-          <input id="openaiApiKeyInput" type="password" placeholder="留空表示不修改" />
+          <input id="openaiApiKeyInput" type="password" placeholder="Leave blank to keep current key" />
           <label>OpenAI Model</label>
           <input id="openaiModelInput" />
-          <label>微信公众号 AppID</label>
+          <label>WeChat Official Account AppID</label>
           <input id="wechatAppIdInput" />
-          <label>微信公众号 AppSecret</label>
-          <input id="wechatAppSecretInput" type="password" placeholder="留空表示不修改" />
-          <button id="saveSettingsButton">保存设置</button>
+          <label>WeChat Official Account AppSecret</label>
+          <input id="wechatAppSecretInput" type="password" placeholder="Leave blank to keep current secret" />
+          <button id="saveSettingsButton">Save Settings</button>
+          <button id="resetLayoutButton">Reset Layout</button>
           <div class="settings-state" id="settingsState"></div>
         </section>
       </aside>

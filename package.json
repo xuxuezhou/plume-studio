@@ -13,7 +13,7 @@
   },
   "build": {
     "appId": "com.codex.wechatwritingstudio",
-    "productName": "公众号写作台",
+    "productName": "WeWrite Studio",
     "directories": {
       "output": "release"
     },

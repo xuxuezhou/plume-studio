@@ -30,16 +30,16 @@ function defaultData() {
     articles: [
       {
         id: createId('article'),
-        title: '第一篇公众号文章',
+        title: 'First WeChat Article',
         author: '',
-        digest: '用这篇示例稿开始搭建你的本地写作流程。',
+        digest: 'Use this starter draft to shape your local writing workflow.',
         sourceUrl: '',
         coverPath: '',
         showCover: true,
         openComment: false,
         fansOnlyComment: false,
         contentMarkdown:
-          '## 开始写作\n\n这里是你的本地公众号写作台。\n\n- 在左侧管理文章\n- 在中间写正文\n- 在右侧让 GPT 帮你改稿\n\n完成后先推送到微信公众号草稿箱，再人工确认发布。',
+          '## Start writing\n\nThis is your local WeChat Official Account writing desk.\n\n- Manage articles in the library\n- Draft in the center editor\n- Ask GPT for editing help in the side panel\n\nWhen the article is ready, send it to the WeChat draft box first, then publish only after a final manual check.',
         wechat: {
           draftMediaId: '',
           publishId: '',
@@ -136,7 +136,7 @@ function upsertArticle(article) {
   const timestamp = nowIso();
   const nextArticle = {
     ...article,
-    title: article.title || '未命名文章',
+    title: article.title || 'Untitled Article',
     updatedAt: timestamp,
     createdAt: article.createdAt || timestamp,
     wechat: {
@@ -164,7 +164,7 @@ function createWindow() {
     height: 860,
     minWidth: 1040,
     minHeight: 720,
-    title: '公众号写作台',
+    title: 'WeWrite Studio',
     backgroundColor: '#f6f3ee',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -199,7 +199,7 @@ ipcMain.handle('articles:create', () => {
   const timestamp = nowIso();
   const article = {
     id: createId('article'),
-    title: '未命名文章',
+    title: 'Untitled Article',
     author: '',
     digest: '',
     sourceUrl: '',
@@ -247,7 +247,7 @@ ipcMain.handle('settings:save', (_event, payload) => {
 
 ipcMain.handle('dialog:chooseImage', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: '选择封面图',
+    title: 'Choose Cover Image',
     properties: ['openFile'],
     filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'webp'] }]
   });
@@ -283,7 +283,7 @@ ipcMain.handle('wechat:createDraft', async (_event, payload) => {
       draftMediaId: result.mediaId,
       coverMediaId: result.coverMediaId,
       coverUrl: result.coverUrl,
-      lastStatus: '草稿已创建'
+      lastStatus: 'Draft created'
     }
   });
   return { result, article: saved };
@@ -299,7 +299,7 @@ ipcMain.handle('wechat:publish', async (_event, payload) => {
       wechat: {
         ...(article.wechat || {}),
         publishId: result.publishId,
-        lastStatus: '发布已提交'
+        lastStatus: 'Publish submitted'
       }
     });
   }

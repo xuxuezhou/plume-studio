@@ -9,7 +9,7 @@ let tokenCache = {
 
 function assertCredentials(settings) {
   if (!settings.wechatAppId || !settings.wechatAppSecret) {
-    throw new Error('缺少微信公众号 AppID 或 AppSecret。请先在设置中填写。');
+    throw new Error('Missing WeChat Official Account AppID or AppSecret. Add them in Settings first.');
   }
 }
 
@@ -20,10 +20,10 @@ function buildCredentialKey(settings) {
 async function readWechatJson(response) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(`微信接口请求失败：HTTP ${response.status}`);
+    throw new Error(`WeChat API request failed: HTTP ${response.status}`);
   }
   if (payload.errcode && payload.errcode !== 0) {
-    throw new Error(`${payload.errmsg || '微信接口返回错误'}（errcode: ${payload.errcode}）`);
+    throw new Error(`${payload.errmsg || 'WeChat API returned an error'} (errcode: ${payload.errcode})`);
   }
   return payload;
 }
@@ -44,7 +44,7 @@ async function getAccessToken(settings, { forceRefresh = false } = {}) {
 
   const payload = await readWechatJson(await fetch(url));
   if (!payload.access_token) {
-    throw new Error('微信未返回 access_token。');
+    throw new Error('WeChat did not return an access_token.');
   }
 
   tokenCache = {
@@ -71,7 +71,7 @@ async function appendFileToForm(form, filePath) {
 
 async function uploadPermanentImage(accessToken, filePath) {
   if (!filePath) {
-    throw new Error('请先选择封面图。微信公众号草稿需要封面素材。');
+    throw new Error('Choose a cover image first. WeChat drafts require a cover asset.');
   }
 
   const url = new URL('https://api.weixin.qq.com/cgi-bin/material/add_material');
@@ -89,7 +89,7 @@ async function uploadPermanentImage(accessToken, filePath) {
   );
 
   if (!payload.media_id) {
-    throw new Error('微信未返回封面 media_id。');
+    throw new Error('WeChat did not return a cover media_id.');
   }
 
   return payload;
@@ -111,7 +111,7 @@ async function createDraft(settings, article, htmlContent) {
       body: JSON.stringify({
         articles: [
           {
-            title: article.title || '未命名文章',
+            title: article.title || 'Untitled Article',
             author: article.author || '',
             digest: article.digest || '',
             content: htmlContent,
@@ -127,7 +127,7 @@ async function createDraft(settings, article, htmlContent) {
   );
 
   if (!payload.media_id) {
-    throw new Error('微信未返回草稿 media_id。');
+    throw new Error('WeChat did not return a draft media_id.');
   }
 
   return {
@@ -140,7 +140,7 @@ async function createDraft(settings, article, htmlContent) {
 
 async function submitPublish(settings, mediaId) {
   if (!mediaId) {
-    throw new Error('缺少草稿 media_id。请先推送草稿箱。');
+    throw new Error('Missing draft media_id. Send the article to the draft box first.');
   }
 
   const accessToken = await getAccessToken(settings);
@@ -165,7 +165,7 @@ async function submitPublish(settings, mediaId) {
 
 async function getPublishStatus(settings, publishId) {
   if (!publishId) {
-    throw new Error('缺少 publish_id。');
+    throw new Error('Missing publish_id.');
   }
 
   const accessToken = await getAccessToken(settings);

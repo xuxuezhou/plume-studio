@@ -1,40 +1,47 @@
-# 公众号写作台
+# WeWrite Studio
 
-一个本地 Mac 写作应用第一版：支持文章管理、Markdown 写作、AI 辅助改稿、微信公众号凭据配置、推送到公众号草稿箱，以及人工确认后提交发布。
+A local Mac writing app for drafting, editing, and preparing WeChat Official Account articles with AI assistance.
 
-## 第一版功能
+## Current Features
 
-- 本地文章库：新建、保存、删除、预览。
-- AI 写作助手：提纲、标题、改写、摘要、审稿、微信排版建议。
-- 微信公众号连接：保存 AppID/AppSecret，测试连接。
-- 草稿箱发布：上传封面图，创建微信公众号草稿。
-- 发布提交：使用草稿 `media_id` 提交发布，并记录状态。
+- Local article library: create, save, delete, preview.
+- AI writing assistant: outline, titles, rewrite, digest, review, and WeChat-friendly formatting.
+- Adjustable workspace: draggable library, editor/preview, and side panel widths.
+- Collapsible sidebars: hide the library or right-side panel when you want a focused drafting surface.
+- Light/dark mode with local layout persistence.
+- WeChat connection settings: AppID/AppSecret storage, connection test, draft-box publishing, publish submission, and status lookup.
 
-## 本地运行
+## Run Locally
 
 ```bash
 npm install
 npm start
 ```
 
-## 打包 Mac App
+## Build the Mac App
 
 ```bash
 npm run pack
 ```
 
-打包后的 `.app` 会生成在 `release/mac/公众号写作台.app`。
+The `.app` bundle is generated in `release/mac-arm64/WeWrite Studio.app`.
 
-## 配置
+To create a distributable DMG:
 
-在应用右侧「设置」里填写：
+```bash
+npm run dist
+```
+
+## Configuration
+
+In the app, open Settings and fill in:
 
 - OpenAI API Key
-- OpenAI model，默认 `gpt-5.4-mini`
-- 微信公众号 AppID
-- 微信公众号 AppSecret
+- OpenAI model, default `gpt-5.4-mini`
+- WeChat Official Account AppID
+- WeChat Official Account AppSecret
 
-也可以在启动前设置环境变量：
+You can also provide OpenAI credentials before launch:
 
 ```bash
 export OPENAI_API_KEY="sk-..."
@@ -42,14 +49,16 @@ export OPENAI_MODEL="gpt-5.4-mini"
 npm start
 ```
 
-## 微信公众号准备
+## WeChat Setup
 
-公众号后台需要启用开发配置，并把当前机器或发布服务器的出口 IP 加入 IP 白名单。第一版使用的微信接口包括：
+In the WeChat Official Account admin console, enable developer configuration and add the current machine or publishing server egress IP to the API allowlist.
 
-- 获取 `access_token`
-- 上传永久图片素材
-- 新增草稿
-- 提交发布
-- 查询发布状态
+The first version uses these WeChat APIs:
 
-建议先只使用「推送草稿」，确认草稿在公众号后台显示正常后，再使用「提交发布」。
+- Get `access_token`
+- Upload permanent image asset
+- Add draft
+- Submit publish
+- Query publish status
+
+Recommended publishing flow: send to the WeChat draft box first, verify the draft in the official admin UI, then manually submit publish from this app only after review.
