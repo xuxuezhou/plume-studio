@@ -8,6 +8,7 @@ const DATA_VERSION = 1;
 
 let mainWindow;
 let dataPath;
+let rendererRecoveryReloaded = false;
 
 function nowIso() {
   return new Date().toISOString();
@@ -212,6 +213,7 @@ function upsertArticle(article) {
 }
 
 function createWindow() {
+  rendererRecoveryReloaded = false;
   mainWindow = new BrowserWindow({
     width: 1320,
     height: 860,
@@ -226,7 +228,9 @@ function createWindow() {
     }
   });
 
-  mainWindow.webContents.once('did-finish-load', ensureRendererLoaded);
+  mainWindow.webContents.once('did-finish-load', () => {
+    setTimeout(ensureRendererLoaded, 80);
+  });
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'), {
     query: {
       v: app.getVersion()
@@ -236,15 +240,20 @@ function createWindow() {
 
 async function ensureRendererLoaded() {
   const rendererPath = path.join(__dirname, 'renderer');
-  const state = await mainWindow.webContents
-    .executeJavaScript(
-      `({
-        styleCount: document.styleSheets.length,
-        scriptStarted: Boolean(window.__WEWRITE_SCRIPT_STARTED),
-        scriptReady: Boolean(window.__WEWRITE_READY)
-      })`
-    )
-    .catch(() => ({ styleCount: 0, scriptStarted: false, scriptReady: false }));
+  const state = await getRendererLoadState();
+
+  if (state.sourceLeak) {
+    await cleanupRendererSourceLeak();
+  }
+
+  if ((!state.styleCount || !state.scriptStarted) && !rendererRecoveryReloaded) {
+    rendererRecoveryReloaded = true;
+    mainWindow.webContents.once('did-finish-load', () => {
+      setTimeout(ensureRendererLoaded, 80);
+    });
+    mainWindow.webContents.reloadIgnoringCache();
+    return;
+  }
 
   if (!state.styleCount) {
     const css = fs.readFileSync(path.join(rendererPath, 'styles.css'), 'utf8');
@@ -253,8 +262,58 @@ async function ensureRendererLoaded() {
 
   if (!state.scriptStarted) {
     const js = fs.readFileSync(path.join(rendererPath, 'app.js'), 'utf8');
-    await mainWindow.webContents.executeJavaScript(js);
+    await injectRendererScript(js);
+    await cleanupRendererSourceLeak();
   }
+}
+
+function getRendererLoadState() {
+  return mainWindow.webContents
+    .executeJavaScript(
+      `(() => {
+        const sourceLeak = [...document.body.childNodes].some((node) => {
+          if (node.nodeType !== Node.TEXT_NODE) return false;
+          return /document\\.querySelector\\('#createDraftButton'\\)|window\\.__WEWRITE_READY|setWechatLog\\(response\\.result\\)/.test(node.textContent || '');
+        });
+        return {
+          styleCount: document.styleSheets.length,
+          scriptStarted: Boolean(window.__WEWRITE_SCRIPT_STARTED),
+          scriptReady: Boolean(window.__WEWRITE_READY),
+          sourceLeak
+        };
+      })()`
+    )
+    .catch(() => ({ styleCount: 0, scriptStarted: false, scriptReady: false, sourceLeak: false }));
+}
+
+function cleanupRendererSourceLeak() {
+  return mainWindow.webContents
+    .executeJavaScript(
+      `(() => {
+        const leakedSourcePattern = /document\\.querySelector\\('#createDraftButton'\\)|window\\.__WEWRITE_READY|setWechatLog\\(response\\.result\\)/;
+        for (const node of [...document.body.childNodes]) {
+          if (node.nodeType === Node.TEXT_NODE && leakedSourcePattern.test(node.textContent || '')) {
+            node.remove();
+          }
+        }
+      })()`
+    )
+    .catch(() => {});
+}
+
+function injectRendererScript(js) {
+  const scriptSource = `${js}\n//# sourceURL=wewrite-fallback-app.js`;
+  return mainWindow.webContents.executeJavaScript(
+    `(() => {
+      if (window.__WEWRITE_SCRIPT_STARTED) return true;
+      const script = document.createElement('script');
+      script.dataset.wewriteFallback = 'true';
+      script.textContent = ${JSON.stringify(scriptSource)};
+      document.head.appendChild(script);
+      script.remove();
+      return Boolean(window.__WEWRITE_SCRIPT_STARTED);
+    })()`
+  );
 }
 
 app.whenReady().then(() => {
