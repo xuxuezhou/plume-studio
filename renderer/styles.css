@@ -162,58 +162,239 @@ body.drafts-hidden.inspector-hidden .app-shell {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
-  padding: 18px 12px;
+  padding: 18px 10px;
   border-right: 1px solid var(--line);
   background: var(--rail);
 }
 
 .rail-brand {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 20px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 19px;
+  font-weight: 800;
+  --brand-icon-opacity: 0;
+  --brand-icon-scale: 0.8;
+  --brand-mark-opacity: 1;
+  --brand-mark-scale: 1;
+}
+
+.rail-brand:hover {
+  background: transparent;
+}
+
+.brand-mark,
+.rail-collapse-icon {
+  position: absolute;
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.brand-mark {
   display: grid;
   place-items: center;
   width: 42px;
   height: 42px;
-  margin-bottom: 14px;
   border-radius: 14px;
   background: var(--accent);
   color: white;
-  font-size: 19px;
-  font-weight: 800;
+  opacity: var(--brand-mark-opacity);
+  box-shadow: var(--shadow);
+  transform: scale(var(--brand-mark-scale));
+}
+
+.rail-collapse-icon {
+  width: 26px;
+  height: 30px;
+  opacity: var(--brand-icon-opacity);
+  transform: scale(var(--brand-icon-scale));
+}
+
+.rail-collapse-icon::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 3px solid currentColor;
+  border-radius: 6px;
+}
+
+.rail-collapse-icon::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 8px;
+  width: 8px;
+  height: 8px;
+  border-right: 3px solid currentColor;
+  border-bottom: 3px solid currentColor;
+  transform: rotate(135deg);
+}
+
+.rail-brand:hover .brand-mark,
+.rail-brand:focus-visible .brand-mark,
+body.drafts-hidden .rail-brand .brand-mark,
+.rail-brand.is-drawer-hidden .brand-mark {
+  --brand-mark-opacity: 0;
+  --brand-mark-scale: 0.78;
+}
+
+.rail-brand:hover .rail-collapse-icon,
+.rail-brand:focus-visible .rail-collapse-icon,
+body.drafts-hidden .rail-brand .rail-collapse-icon,
+.rail-brand.is-drawer-hidden .rail-collapse-icon {
+  --brand-icon-opacity: 1;
+  --brand-icon-scale: 1;
+}
+
+body.drafts-hidden .rail-collapse-icon::after,
+.rail-brand.is-drawer-hidden .rail-collapse-icon::after {
+  left: 6px;
+  transform: rotate(-45deg);
 }
 
 .rail-button {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 52px;
   padding: 0;
-  border-radius: 14px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
   color: var(--ink);
-  font-size: 13px;
-  font-weight: 700;
+}
+
+.rail-button::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: transparent;
+  transform: scale(0.82);
+  transition:
+    background 140ms ease,
+    transform 140ms ease;
 }
 
 .rail-button.active,
 .rail-button.is-off {
-  background: var(--accent-soft);
   color: var(--accent);
 }
 
+.rail-button:hover,
+.rail-button:focus-visible {
+  background: transparent;
+  color: var(--accent);
+}
+
+.rail-button.active::before,
+.rail-button:hover::before,
+.rail-button:focus-visible::before {
+  background: var(--accent-soft);
+  transform: scale(1);
+}
+
 .rail-button.is-off {
-  text-decoration: line-through;
+  color: var(--faint);
+}
+
+.rail-button.is-off::before {
+  background: transparent;
+  transform: scale(0.82);
+}
+
+.rail-icon {
+  position: relative;
+  z-index: 1;
+  width: 25px;
+  height: 25px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
 }
 
 .rail-spacer {
   flex: 1;
 }
 
-.rail-caption {
-  margin: 0;
-  writing-mode: vertical-rl;
-  color: var(--faint);
-  font-size: 11px;
-  font-weight: 700;
+.rail-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 8px;
+  border: 2px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 38% 32%, #e8f4ff 0 18%, transparent 19%),
+    linear-gradient(135deg, #6aa8dc, #f4b46c);
+  color: white;
+  font-size: 13px;
+  font-weight: 900;
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.28);
+}
+
+.rail-brand[data-tooltip]::after,
+.rail-button[data-tooltip]::after,
+.rail-avatar[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 60px;
+  top: 50%;
+  z-index: 20;
+  padding: 7px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink) 92%, var(--surface));
+  color: var(--surface);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(4px, -50%);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+  white-space: nowrap;
+  box-shadow: var(--shadow);
+}
+
+.rail-brand[data-tooltip]:hover::after,
+.rail-brand[data-tooltip]:focus-visible::after,
+.rail-button[data-tooltip]:hover::after,
+.rail-button[data-tooltip]:focus-visible::after,
+.rail-avatar[data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+#brandToggleButton:hover > .brand-mark,
+#brandToggleButton:focus-visible > .brand-mark,
+#brandToggleButton.is-drawer-hidden > .brand-mark {
+  --brand-mark-opacity: 0;
+  --brand-mark-scale: 0.78;
+}
+
+#brandToggleButton:hover > .rail-collapse-icon,
+#brandToggleButton:focus-visible > .rail-collapse-icon,
+#brandToggleButton.is-drawer-hidden > .rail-collapse-icon {
+  --brand-icon-opacity: 1;
+  --brand-icon-scale: 1;
 }
 
 .draft-drawer,

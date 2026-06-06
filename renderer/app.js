@@ -13,7 +13,7 @@ function createPreviewBridge() {
     openComment: false,
     fansOnlyComment: false,
     contentMarkdown:
-      '## Start with the draft\n\nThis preview runs without Electron so the layout can be checked in a browser.\n\n- Use the left sheet as the writing surface\n- Keep preview, assistant, publishing, and settings in the right rail\n- Resize or hide the draft drawer and tool panel\n\nWhen the Mac app runs, these controls use the real local data and publishing services.',
+      '## Start with the draft\n\nThis preview runs without Electron so the layout can be checked in a browser.\n\n- Use the left sheet as the writing surface\n- Keep preview, assistant, and publishing in the right panel\n- Resize or hide the draft drawer and tool panel\n\nWhen the Mac app runs, these controls use the real local data and publishing services.',
     wechat: {
       draftMediaId: '',
       publishId: '',
@@ -100,9 +100,11 @@ const elements = {
   preview: document.querySelector('#preview'),
   saveButton: document.querySelector('#saveButton'),
   deleteButton: document.querySelector('#deleteButton'),
+  brandToggleButton: document.querySelector('#brandToggleButton'),
   newArticleButton: document.querySelector('#newArticleButton'),
   chooseCoverButton: document.querySelector('#chooseCoverButton'),
   toggleDraftsButton: document.querySelector('#toggleDraftsButton'),
+  jumpAssistantButton: document.querySelector('#jumpAssistantButton'),
   toggleInspectorButton: document.querySelector('#toggleInspectorButton'),
   themeButton: document.querySelector('#themeButton'),
   draftResizeHandle: document.querySelector('#draftResizeHandle'),
@@ -162,6 +164,40 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function setButtonLabel(button, label) {
+  button.title = label;
+  button.setAttribute('aria-label', label);
+  button.dataset.tooltip = label;
+}
+
+function syncRailState() {
+  const activeTab = document.querySelector('.tab.active')?.dataset.tab || 'preview';
+  elements.toggleDraftsButton.classList.toggle('active', !state.layout.draftsHidden);
+  elements.toggleDraftsButton.classList.toggle('is-off', state.layout.draftsHidden);
+  elements.jumpAssistantButton.classList.toggle(
+    'active',
+    !state.layout.inspectorHidden && activeTab === 'assistant'
+  );
+  elements.toggleInspectorButton.classList.toggle(
+    'active',
+    !state.layout.inspectorHidden && activeTab !== 'assistant'
+  );
+  elements.toggleInspectorButton.classList.toggle('is-off', state.layout.inspectorHidden);
+}
+
+function setBrandIconVisible(visible) {
+  const mark = elements.brandToggleButton.querySelector('.brand-mark');
+  const icon = elements.brandToggleButton.querySelector('.rail-collapse-icon');
+  mark.style.opacity = visible ? '0' : '';
+  mark.style.transform = visible ? 'scale(0.78)' : '';
+  icon.style.opacity = visible ? '1' : '';
+  icon.style.transform = visible ? 'scale(1)' : '';
+}
+
+function syncBrandToggleVisual() {
+  setBrandIconVisible(state.layout.draftsHidden);
+}
+
 function applyLayout() {
   const root = document.documentElement;
   root.style.setProperty('--drawer-width', `${state.layout.drawerWidth}px`);
@@ -170,12 +206,14 @@ function applyLayout() {
   document.body.dataset.theme = state.layout.theme;
   document.body.classList.toggle('drafts-hidden', state.layout.draftsHidden);
   document.body.classList.toggle('inspector-hidden', state.layout.inspectorHidden);
+  elements.brandToggleButton.classList.toggle('is-drawer-hidden', state.layout.draftsHidden);
+  syncBrandToggleVisual();
 
   elements.themeButton.title = state.layout.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
-  elements.toggleDraftsButton.title = state.layout.draftsHidden ? 'Show drafts' : 'Hide drafts';
-  elements.toggleInspectorButton.title = state.layout.inspectorHidden ? 'Show panel' : 'Hide panel';
-  elements.toggleDraftsButton.classList.toggle('is-off', state.layout.draftsHidden);
-  elements.toggleInspectorButton.classList.toggle('is-off', state.layout.inspectorHidden);
+  setButtonLabel(elements.brandToggleButton, state.layout.draftsHidden ? 'Show drafts' : 'Hide drafts');
+  setButtonLabel(elements.toggleDraftsButton, state.layout.draftsHidden ? 'Show drafts' : 'Drafts');
+  setButtonLabel(elements.toggleInspectorButton, state.layout.inspectorHidden ? 'Show panel' : 'Hide panel');
+  syncRailState();
 }
 
 function activeArticle() {
@@ -439,13 +477,20 @@ function closeSettings() {
   elements.settingsModal.setAttribute('hidden', '');
 }
 
+function setActiveTab(tabName) {
+  const tab = document.querySelector(`.tab[data-tab="${tabName}"]`);
+  const panel = document.querySelector(`#${tabName}Panel`);
+  if (!tab || !panel) return;
+
+  document.querySelectorAll('.tab').forEach((item) => item.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach((item) => item.classList.remove('active'));
+  tab.classList.add('active');
+  panel.classList.add('active');
+  syncRailState();
+}
+
 document.querySelectorAll('.tab').forEach((tab) => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach((item) => item.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach((item) => item.classList.remove('active'));
-    tab.classList.add('active');
-    document.querySelector(`#${tab.dataset.tab}Panel`).classList.add('active');
-  });
+  tab.addEventListener('click', () => setActiveTab(tab.dataset.tab));
 });
 
 elements.draftResizeHandle.addEventListener('pointerdown', (event) => startResize('drafts', event));
@@ -457,6 +502,13 @@ elements.themeButton.addEventListener('click', () => {
   saveLayout();
   renderSettings();
 });
+
+elements.brandToggleButton.addEventListener('pointerenter', () => setBrandIconVisible(true));
+elements.brandToggleButton.addEventListener('pointerleave', syncBrandToggleVisual);
+elements.brandToggleButton.addEventListener('mouseenter', () => setBrandIconVisible(true));
+elements.brandToggleButton.addEventListener('mouseleave', syncBrandToggleVisual);
+elements.brandToggleButton.addEventListener('focus', () => setBrandIconVisible(true));
+elements.brandToggleButton.addEventListener('blur', syncBrandToggleVisual);
 
 elements.openSettingsButton.addEventListener('click', openSettings);
 elements.closeSettingsButton.addEventListener('click', closeSettings);
@@ -492,8 +544,19 @@ elements.assistantModelSelect.addEventListener('change', async () => {
   renderSettings();
 });
 
-elements.toggleDraftsButton.addEventListener('click', () => {
+function toggleDrafts() {
   state.layout.draftsHidden = !state.layout.draftsHidden;
+  applyLayout();
+  saveLayout();
+  renderSettings();
+}
+
+elements.brandToggleButton.addEventListener('click', toggleDrafts);
+elements.toggleDraftsButton.addEventListener('click', toggleDrafts);
+
+elements.jumpAssistantButton.addEventListener('click', () => {
+  state.layout.inspectorHidden = false;
+  setActiveTab('assistant');
   applyLayout();
   saveLayout();
   renderSettings();
