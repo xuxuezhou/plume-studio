@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('writingDesk', {
   deleteArticle: (articleId) => ipcRenderer.invoke('articles:delete', articleId),
   saveSettings: (settings) => ipcRenderer.invoke('settings:save', settings),
   chooseImage: () => ipcRenderer.invoke('dialog:chooseImage'),
+  chooseFiles: () => ipcRenderer.invoke('dialog:chooseFiles'),
+  readAttachments: (filePaths) => ipcRenderer.invoke('files:readAttachments', filePaths),
   runAssistant: (payload) => ipcRenderer.invoke('assistant:run', payload),
   openChatGptLogin: () => ipcRenderer.invoke('account:openChatGpt'),
   testWechat: () => ipcRenderer.invoke('wechat:test'),

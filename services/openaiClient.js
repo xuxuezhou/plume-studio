@@ -1,6 +1,11 @@
 const DEFAULT_MODEL = process.env.OPENAI_MODEL || 'gpt-5.4-mini';
 
 const ACTIONS = {
+  balanced: {
+    label: 'Balanced',
+    instruction:
+      'Respond to the user request with balanced editorial judgment. If the request is broad, choose the most useful writing move across outlining, rewriting, title work, digest polish, structure review, and formatting. Keep the answer directly usable for the current draft.'
+  },
   outline: {
     label: 'Outline',
     instruction:
@@ -32,6 +37,7 @@ const ACTIONS = {
       'Format the draft as clean HTML suitable for pasting into the WeChat editor. Use simple paragraphs, headings, emphasis, and quote blocks. Do not use external CSS.'
   }
 };
+const MAX_ATTACHMENT_CHARS = 18_000;
 
 function extractOutputText(payload) {
   if (payload.output_text) {
@@ -53,20 +59,70 @@ function extractOutputText(payload) {
   return chunks.join('\n').trim();
 }
 
-async function runWritingAssistant({ apiKey, model, action, article, selection, note }) {
+function formatAttachments(attachments = []) {
+  if (!Array.isArray(attachments) || attachments.length === 0) {
+    return '';
+  }
+
+  let remaining = MAX_ATTACHMENT_CHARS;
+  const parts = [];
+
+  for (const attachment of attachments.slice(0, 8)) {
+    const label = `${attachment.name || 'Attachment'}${attachment.path ? ` (${attachment.path})` : ''}`;
+    if (attachment.content && remaining > 0) {
+      const content = attachment.content.slice(0, remaining);
+      remaining -= content.length;
+      parts.push(
+        [
+          `File: ${label}`,
+          attachment.truncated ? 'Note: File was truncated before being added to the prompt.' : '',
+          'Content:',
+          content
+        ]
+          .filter(Boolean)
+          .join('\n')
+      );
+      continue;
+    }
+
+    parts.push(`File: ${label}\nNote: ${attachment.status || 'Attached, but no readable text was available.'}`);
+  }
+
+  return parts.join('\n\n---\n\n');
+}
+
+async function runWritingAssistant({
+  apiKey,
+  model,
+  action,
+  article,
+  selection,
+  note,
+  attachments,
+  smartEnabled = true,
+  searchEnabled = false
+}) {
   if (!apiKey) {
     throw new Error('Missing OpenAI API key. Add it in Settings first.');
   }
 
-  const actionConfig = ACTIONS[action] || ACTIONS.review;
+  const actionConfig = ACTIONS[action] || ACTIONS.balanced;
   const targetText = selection?.trim() || article.contentMarkdown || '';
+  const attachmentContext = formatAttachments(attachments);
   const userPrompt = [
     `Task: ${actionConfig.instruction}`,
+    smartEnabled
+      ? 'Smart mode: infer whether the user needs planning, editing, critique, title help, digest help, or formatting, then choose the best response shape.'
+      : '',
+    searchEnabled
+      ? 'Search mode: use the attached files and draft context as the searchable source set. Do not claim live web browsing or external source checks unless the source text is provided.'
+      : '',
     '',
     `Article title: ${article.title || 'Untitled Article'}`,
     `Author: ${article.author || 'Not provided'}`,
     `Digest: ${article.digest || 'Not provided'}`,
     note ? `Extra instructions: ${note}` : '',
+    attachmentContext ? `\nAttached context:\n${attachmentContext}` : '',
     '',
     'Draft:',
     targetText || '(The draft is empty. Work from the title and digest.)'

@@ -48,6 +48,31 @@ function createPreviewBridge() {
       hasWechatAppSecret: Boolean(settings.wechatAppSecret)
     }),
     chooseImage: async () => '',
+    chooseFiles: async () => [
+      {
+        id: 'preview_attachment',
+        name: 'example-notes.md',
+        path: 'Browser preview',
+        extension: '.md',
+        size: 128,
+        kind: 'text',
+        content: 'Preview attachment text.',
+        truncated: false,
+        status: 'Text attached.'
+      }
+    ],
+    readAttachments: async (filePaths = []) =>
+      filePaths.map((filePath, index) => ({
+        id: `preview_attachment_${index}`,
+        name: filePath.split('/').pop() || 'Attachment',
+        path: filePath,
+        extension: '',
+        size: 0,
+        kind: 'file',
+        content: '',
+        truncated: false,
+        status: 'Browser preview attachment.'
+      })),
     runAssistant: async ({ action }) => ({
       action,
       label: action,
@@ -83,6 +108,9 @@ const state = {
   layout: loadLayout(),
   activeId: '',
   assistantText: '',
+  assistantAttachments: [],
+  assistantSmartEnabled: true,
+  assistantSearchEnabled: true,
   saving: false
 };
 
@@ -118,8 +146,14 @@ const elements = {
   draftResizeHandle: document.querySelector('#draftResizeHandle'),
   inspectorResizeHandle: document.querySelector('#inspectorResizeHandle'),
   draftCount: document.querySelector('#draftCount'),
+  assistantAttachments: document.querySelector('#assistantAttachments'),
   assistantNote: document.querySelector('#assistantNote'),
-  assistantModelSelect: document.querySelector('#assistantModelSelect'),
+  assistantModeSelect: document.querySelector('#assistantModeSelect'),
+  assistantAttachButton: document.querySelector('#assistantAttachButton'),
+  assistantSmartButton: document.querySelector('#assistantSmartButton'),
+  assistantSearchButton: document.querySelector('#assistantSearchButton'),
+  assistantSendButton: document.querySelector('#assistantSendButton'),
+  assistantResultActions: document.querySelector('#assistantResultActions'),
   assistantOutput: document.querySelector('#assistantOutput'),
   insertAssistantButton: document.querySelector('#insertAssistantButton'),
   replaceAssistantButton: document.querySelector('#replaceAssistantButton'),
@@ -129,6 +163,7 @@ const elements = {
   publishIdInput: document.querySelector('#publishIdInput'),
   articleIdInput: document.querySelector('#articleIdInput'),
   openaiApiKeyInput: document.querySelector('#openaiApiKeyInput'),
+  openaiModelSelect: document.querySelector('#openaiModelSelect'),
   wechatAppIdInput: document.querySelector('#wechatAppIdInput'),
   wechatAppSecretInput: document.querySelector('#wechatAppSecretInput'),
   settingsState: document.querySelector('#settingsState'),
@@ -254,10 +289,23 @@ function isImageFile(file) {
   return Boolean(file && (/^image\//.test(file.type) || /\.(jpe?g|png|webp|gif)$/i.test(file.name || '')));
 }
 
+function droppedFilePaths(event) {
+  return Array.from(event.dataTransfer?.files || [])
+    .map((file) => file.path)
+    .filter(Boolean);
+}
+
 function firstDroppedImagePath(event) {
   const files = Array.from(event.dataTransfer?.files || []);
   const image = files.find(isImageFile);
   return image?.path || '';
+}
+
+function formatFileSize(bytes = 0) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function inlineMarkdown(value) {
@@ -427,8 +475,52 @@ function renderPreview() {
   `;
 }
 
+function renderAssistantAttachments() {
+  elements.assistantAttachments.hidden = state.assistantAttachments.length === 0;
+  elements.assistantAttachments.innerHTML = state.assistantAttachments
+    .map((attachment) => {
+      const status = attachment.status || (attachment.content ? 'Text attached.' : 'Attached.');
+      const size = formatFileSize(attachment.size);
+      return `
+        <span class="assistant-attachment" title="${escapeHtml(status)}">
+          <span class="assistant-attachment-name">${escapeHtml(attachment.name || 'Attachment')}</span>
+          ${size ? `<span class="assistant-attachment-size">${escapeHtml(size)}</span>` : ''}
+          <button type="button" data-remove-attachment="${escapeHtml(attachment.id)}" aria-label="Remove attachment">x</button>
+        </span>
+      `;
+    })
+    .join('');
+}
+
+function addAssistantAttachments(attachments = []) {
+  const byPath = new Map(state.assistantAttachments.map((attachment) => [attachment.path, attachment]));
+  for (const attachment of attachments) {
+    if (attachment?.path) {
+      byPath.set(attachment.path, attachment);
+    }
+  }
+  state.assistantAttachments = [...byPath.values()].slice(0, 8);
+  renderAssistantAttachments();
+}
+
+async function attachFilesFromPaths(filePaths = []) {
+  if (!filePaths.length || !bridge.readAttachments) return;
+  const attachments = await bridge.readAttachments(filePaths);
+  addAssistantAttachments(attachments);
+}
+
+function setAssistantSearchEnabled(enabled) {
+  state.assistantSearchEnabled = enabled;
+  elements.assistantSearchButton.classList.toggle('active', enabled);
+}
+
+function setAssistantSmartEnabled(enabled) {
+  state.assistantSmartEnabled = enabled;
+  elements.assistantSmartButton.classList.toggle('active', enabled);
+}
+
 function renderSettings() {
-  elements.assistantModelSelect.value = state.settings.openaiModel || 'gpt-5.4-mini';
+  elements.openaiModelSelect.value = state.settings.openaiModel || 'gpt-5.4-mini';
   elements.wechatAppIdInput.value = state.settings.wechatAppId || '';
   elements.settingsState.textContent = [
     `OpenAI key: ${state.settings.hasOpenaiApiKey ? 'saved' : 'not saved'}`,
@@ -444,17 +536,20 @@ function render() {
   applyLayout();
   renderArticleList();
   renderEditor();
+  renderAssistantAttachments();
+  setAssistantSmartEnabled(state.assistantSmartEnabled);
+  setAssistantSearchEnabled(state.assistantSearchEnabled);
   renderSettings();
 }
 
 function setBusy(button, busy, label) {
   button.disabled = busy;
   if (busy) {
-    button.dataset.originalLabel = button.textContent;
+    button.dataset.originalHtml = button.innerHTML;
     button.textContent = label;
-  } else if (button.dataset.originalLabel) {
-    button.textContent = button.dataset.originalLabel;
-    delete button.dataset.originalLabel;
+  } else if (button.dataset.originalHtml) {
+    button.innerHTML = button.dataset.originalHtml;
+    delete button.dataset.originalHtml;
   }
 }
 
@@ -633,9 +728,9 @@ elements.settingsModal.addEventListener('click', (event) => {
   }
 });
 
-elements.assistantModelSelect.addEventListener('change', async () => {
+elements.openaiModelSelect.addEventListener('change', async () => {
   const settings = await bridge.saveSettings({
-    openaiModel: elements.assistantModelSelect.value
+    openaiModel: elements.openaiModelSelect.value
   });
   state.settings = settings;
   renderSettings();
@@ -734,6 +829,48 @@ elements.coverDropzone.addEventListener('drop', async (event) => {
   }
 });
 
+elements.assistantAttachButton.addEventListener('click', async () => {
+  if (!bridge.chooseFiles) return;
+  const attachments = await bridge.chooseFiles();
+  addAssistantAttachments(attachments);
+});
+
+elements.assistantAttachments.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-remove-attachment]');
+  if (!button) return;
+  state.assistantAttachments = state.assistantAttachments.filter(
+    (attachment) => attachment.id !== button.dataset.removeAttachment
+  );
+  renderAssistantAttachments();
+});
+
+elements.assistantSmartButton.addEventListener('click', () => {
+  setAssistantSmartEnabled(!state.assistantSmartEnabled);
+});
+
+elements.assistantSearchButton.addEventListener('click', () => {
+  setAssistantSearchEnabled(!state.assistantSearchEnabled);
+});
+
+const assistantComposer = document.querySelector('.assistant-composer');
+['dragenter', 'dragover'].forEach((eventName) => {
+  assistantComposer.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    assistantComposer.classList.add('drag-over');
+  });
+});
+
+['dragleave', 'drop'].forEach((eventName) => {
+  assistantComposer.addEventListener(eventName, () => {
+    assistantComposer.classList.remove('drag-over');
+  });
+});
+
+assistantComposer.addEventListener('drop', async (event) => {
+  event.preventDefault();
+  await attachFilesFromPaths(droppedFilePaths(event));
+});
+
 [
   elements.titleInput,
   elements.authorInput,
@@ -747,31 +884,45 @@ elements.coverDropzone.addEventListener('drop', async (event) => {
   input.addEventListener('input', renderPreview);
 });
 
-document.querySelectorAll('[data-action]').forEach((button) => {
-  button.addEventListener('click', async () => {
-    const article = await saveCurrentArticle({ quiet: true });
-    const selection = elements.contentInput.value.slice(
-      elements.contentInput.selectionStart,
-      elements.contentInput.selectionEnd
-    );
-    setBusy(button, true, 'Working');
-    elements.assistantOutput.textContent = '';
-    try {
-      const result = await bridge.runAssistant({
-        action: button.dataset.action,
-        article,
-        selection,
-        note: elements.assistantNote.value.trim()
-      });
-      state.assistantText = result.text;
-      elements.assistantOutput.textContent = result.text;
-    } catch (error) {
-      state.assistantText = '';
-      elements.assistantOutput.textContent = error.message;
-    } finally {
-      setBusy(button, false);
-    }
-  });
+async function runAssistantRequest() {
+  const article = await saveCurrentArticle({ quiet: true });
+  const selection = elements.contentInput.value.slice(
+    elements.contentInput.selectionStart,
+    elements.contentInput.selectionEnd
+  );
+
+  setBusy(elements.assistantSendButton, true, '...');
+  elements.assistantResultActions.hidden = true;
+  elements.assistantOutput.textContent = '';
+
+  try {
+    const result = await bridge.runAssistant({
+      action: elements.assistantModeSelect.value || 'balanced',
+      article,
+      selection,
+      note: elements.assistantNote.value.trim(),
+      attachments: state.assistantAttachments,
+      smartEnabled: state.assistantSmartEnabled,
+      searchEnabled: state.assistantSearchEnabled
+    });
+    state.assistantText = result.text;
+    elements.assistantOutput.textContent = result.text;
+    elements.assistantResultActions.hidden = false;
+  } catch (error) {
+    state.assistantText = '';
+    elements.assistantOutput.textContent = error.message;
+    elements.assistantResultActions.hidden = true;
+  } finally {
+    setBusy(elements.assistantSendButton, false);
+  }
+}
+
+elements.assistantSendButton.addEventListener('click', runAssistantRequest);
+elements.assistantNote.addEventListener('keydown', (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+    event.preventDefault();
+    runAssistantRequest();
+  }
 });
 
 elements.insertAssistantButton.addEventListener('click', () => {

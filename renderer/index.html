@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WeWrite Studio</title>
-    <link rel="stylesheet" href="./styles.css?v=0.1.12" />
+    <link rel="stylesheet" href="./styles.css?v=0.1.13" />
   </head>
   <body>
     <div class="app-shell">
@@ -176,23 +176,26 @@
           </div>
 
           <div class="assistant-composer">
+            <div class="assistant-attachments" id="assistantAttachments" hidden></div>
             <textarea id="assistantNote" class="assistant-input" placeholder="Ask anything about this draft or highlighted text..."></textarea>
             <div class="assistant-composer-bar">
-              <button class="assistant-icon-button" type="button" title="Attach context">+</button>
-              <select id="assistantModelSelect" title="Model">
-                <option value="gpt-5.4-mini">gpt-5.4-mini</option>
-                <option value="gpt-5.4">gpt-5.4</option>
-                <option value="gpt-5.5">gpt-5.5</option>
+              <button class="assistant-icon-button" id="assistantAttachButton" type="button" title="Attach files" aria-label="Attach files">+</button>
+              <button class="assistant-pill active" id="assistantSmartButton" type="button">Smart</button>
+              <button class="assistant-pill assistant-search-pill active" id="assistantSearchButton" type="button">Search</button>
+              <select id="assistantModeSelect" class="assistant-mode-select" title="Response balance">
+                <option value="balanced">Balanced</option>
               </select>
-              <button class="assistant-chip" data-action="outline">Outline</button>
-              <button class="assistant-chip" data-action="titles">Titles</button>
-              <button class="assistant-chip" data-action="rewrite">Rewrite</button>
-              <button class="assistant-chip" data-action="summary">Digest</button>
-              <button class="assistant-chip" data-action="review">Review</button>
-              <button class="assistant-chip" data-action="format">Format</button>
               <div class="assistant-composer-spacer"></div>
-              <button class="assistant-chip" id="insertAssistantButton">Insert</button>
-              <button class="assistant-chip" id="replaceAssistantButton">Replace</button>
+              <button class="assistant-send-button" id="assistantSendButton" type="button" title="Send" aria-label="Send">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 19V5" />
+                  <path d="m6 11 6-6 6 6" />
+                </svg>
+              </button>
+            </div>
+            <div class="assistant-result-actions" id="assistantResultActions" hidden>
+              <button class="assistant-chip" id="insertAssistantButton" type="button">Insert</button>
+              <button class="assistant-chip" id="replaceAssistantButton" type="button">Replace Draft</button>
             </div>
           </div>
         </section>
@@ -237,6 +240,12 @@
             <p>The writing assistant uses the OpenAI API. ChatGPT web sign-in does not authorize API calls.</p>
             <label>OpenAI API Key</label>
             <input id="openaiApiKeyInput" type="password" placeholder="Leave blank to keep current key" />
+            <label>OpenAI Model</label>
+            <select id="openaiModelSelect">
+              <option value="gpt-5.4-mini">gpt-5.4-mini</option>
+              <option value="gpt-5.4">gpt-5.4</option>
+              <option value="gpt-5.5">gpt-5.5</option>
+            </select>
           </section>
 
           <section class="settings-section">
@@ -266,6 +275,6 @@
       </section>
     </div>
 
-    <script src="./app.js?v=0.1.12"></script>
+    <script src="./app.js?v=0.1.13"></script>
   </body>
 </html>

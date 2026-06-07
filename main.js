@@ -5,6 +5,37 @@ const { DEFAULT_MODEL, runWritingAssistant } = require('./services/openaiClient'
 const { createDraft, getPublishStatus, submitPublish, testConnection } = require('./services/wechatClient');
 
 const DATA_VERSION = 1;
+const MAX_ATTACHMENT_BYTES = 120_000;
+const TEXT_ATTACHMENT_EXTENSIONS = new Set([
+  '.txt',
+  '.md',
+  '.markdown',
+  '.csv',
+  '.tsv',
+  '.json',
+  '.jsonl',
+  '.xml',
+  '.html',
+  '.htm',
+  '.css',
+  '.js',
+  '.jsx',
+  '.ts',
+  '.tsx',
+  '.py',
+  '.java',
+  '.c',
+  '.cc',
+  '.cpp',
+  '.h',
+  '.hpp',
+  '.go',
+  '.rs',
+  '.sql',
+  '.yaml',
+  '.yml',
+  '.log'
+]);
 
 let mainWindow;
 let dataPath;
@@ -100,6 +131,68 @@ function migrateData(data) {
   });
 
   return { data: next, changed };
+}
+
+function isReadableTextAttachment(filePath) {
+  return TEXT_ATTACHMENT_EXTENSIONS.has(path.extname(filePath).toLowerCase());
+}
+
+async function describeAttachment(filePath) {
+  const stats = await fs.promises.stat(filePath);
+  const extension = path.extname(filePath).toLowerCase();
+  const attachment = {
+    id: createId('attachment'),
+    name: path.basename(filePath),
+    path: filePath,
+    extension,
+    size: stats.size,
+    kind: isReadableTextAttachment(filePath) ? 'text' : 'file',
+    content: '',
+    truncated: false,
+    status: ''
+  };
+
+  if (attachment.kind !== 'text') {
+    attachment.status = 'Attached for reference. Text extraction is not available yet.';
+    return attachment;
+  }
+
+  const handle = await fs.promises.open(filePath, 'r');
+  try {
+    const length = Math.min(stats.size, MAX_ATTACHMENT_BYTES);
+    const buffer = Buffer.alloc(length);
+    await handle.read(buffer, 0, length, 0);
+    attachment.content = buffer.toString('utf8').replace(/\u0000/g, '').trim();
+    attachment.truncated = stats.size > MAX_ATTACHMENT_BYTES;
+    attachment.status = attachment.truncated ? 'Text attached, truncated for prompt size.' : 'Text attached.';
+  } finally {
+    await handle.close();
+  }
+
+  return attachment;
+}
+
+async function describeAttachments(filePaths = []) {
+  const uniquePaths = [...new Set(filePaths.filter(Boolean))];
+  return Promise.all(
+    uniquePaths.map(async (filePath) => {
+      try {
+        return await describeAttachment(filePath);
+      } catch (error) {
+        return {
+          id: createId('attachment'),
+          name: path.basename(filePath),
+          path: filePath,
+          extension: path.extname(filePath).toLowerCase(),
+          size: 0,
+          kind: 'error',
+          content: '',
+          truncated: false,
+          status: error.message
+        };
+      }
+    })
+  );
 }
 
 function ensureDataFile() {
@@ -403,6 +496,39 @@ ipcMain.handle('dialog:chooseImage', async () => {
   return result.canceled ? '' : result.filePaths[0];
 });
 
+ipcMain.handle('dialog:chooseFiles', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Attach Context Files',
+    properties: ['openFile', 'multiSelections'],
+    filters: [
+      {
+        name: 'Documents, text, and images',
+        extensions: [
+          'txt',
+          'md',
+          'markdown',
+          'csv',
+          'tsv',
+          'json',
+          'jsonl',
+          'html',
+          'xml',
+          'pdf',
+          'docx',
+          'png',
+          'jpg',
+          'jpeg',
+          'webp'
+        ]
+      },
+      { name: 'All files', extensions: ['*'] }
+    ]
+  });
+  return result.canceled ? [] : describeAttachments(result.filePaths);
+});
+
+ipcMain.handle('files:readAttachments', (_event, filePaths) => describeAttachments(filePaths));
+
 ipcMain.handle('assistant:run', async (_event, payload) => {
   const settings = getPrivateSettings();
   return runWritingAssistant({
@@ -411,7 +537,10 @@ ipcMain.handle('assistant:run', async (_event, payload) => {
     action: payload.action,
     article: payload.article,
     selection: payload.selection,
-    note: payload.note
+    note: payload.note,
+    attachments: payload.attachments,
+    smartEnabled: payload.smartEnabled,
+    searchEnabled: payload.searchEnabled
   });
 });
 
