@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WeWrite Studio</title>
-    <link rel="stylesheet" href="./styles.css?v=0.1.13" />
+    <link rel="stylesheet" href="./styles.css?v=0.1.14" />
   </head>
   <body>
     <div class="app-shell">
@@ -58,7 +58,7 @@
         <header class="paperbar">
           <nav class="paper-tabs" aria-label="Document tools">
             <button class="paper-tab active">Draft</button>
-            <button class="paper-tab" id="chooseCoverButton">Cover</button>
+            <button class="paper-tab" id="chooseCoverButton">Image</button>
             <button class="paper-tab" id="saveButton">Save</button>
             <button class="paper-tab danger" id="deleteButton">Delete</button>
           </nav>
@@ -80,23 +80,6 @@
             <div class="byline-row">
               <input id="authorInput" placeholder="Author" />
             </div>
-            <section class="cover-dropzone" id="coverDropzone" aria-label="Article image drop area">
-              <div class="cover-empty" id="coverEmpty">
-                <div>
-                  <strong>Drop an image into this draft</strong>
-                  <span>Use it as the WeChat cover, or import one from your Mac.</span>
-                </div>
-                <button id="importCoverButton" type="button">Import Image</button>
-              </div>
-              <figure class="cover-preview" id="coverPreview" hidden>
-                <img id="coverPreviewImage" alt="Draft cover" />
-                <figcaption id="coverFileName"></figcaption>
-                <div class="cover-preview-actions">
-                  <button id="replaceCoverButton" type="button">Replace</button>
-                  <button id="removeCoverButton" type="button">Remove</button>
-                </div>
-              </figure>
-            </section>
             <textarea id="contentInput" spellcheck="false"></textarea>
             <input id="coverPathInput" type="hidden" />
           </article>
@@ -275,6 +258,6 @@
       </section>
     </div>
 
-    <script src="./app.js?v=0.1.13"></script>
+    <script src="./app.js?v=0.1.14"></script>
   </body>
 </html>

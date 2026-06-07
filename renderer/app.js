@@ -122,11 +122,6 @@ const elements = {
   digestInput: document.querySelector('#digestInput'),
   sourceUrlInput: document.querySelector('#sourceUrlInput'),
   coverPathInput: document.querySelector('#coverPathInput'),
-  coverDropzone: document.querySelector('#coverDropzone'),
-  coverEmpty: document.querySelector('#coverEmpty'),
-  coverPreview: document.querySelector('#coverPreview'),
-  coverPreviewImage: document.querySelector('#coverPreviewImage'),
-  coverFileName: document.querySelector('#coverFileName'),
   showCoverInput: document.querySelector('#showCoverInput'),
   openCommentInput: document.querySelector('#openCommentInput'),
   contentInput: document.querySelector('#contentInput'),
@@ -136,9 +131,6 @@ const elements = {
   brandToggleButton: document.querySelector('#brandToggleButton'),
   newArticleButton: document.querySelector('#newArticleButton'),
   chooseCoverButton: document.querySelector('#chooseCoverButton'),
-  importCoverButton: document.querySelector('#importCoverButton'),
-  replaceCoverButton: document.querySelector('#replaceCoverButton'),
-  removeCoverButton: document.querySelector('#removeCoverButton'),
   toggleDraftsButton: document.querySelector('#toggleDraftsButton'),
   jumpAssistantButton: document.querySelector('#jumpAssistantButton'),
   toggleInspectorButton: document.querySelector('#toggleInspectorButton'),
@@ -285,6 +277,11 @@ function fileNameFromPath(filePath = '') {
   return filePath.replaceAll('\\', '/').split('/').filter(Boolean).pop() || 'Imported image';
 }
 
+function imageAltFromPath(filePath = '') {
+  if (/^data:/i.test(filePath)) return 'Image';
+  return fileNameFromPath(filePath).replace(/\.[^.]+$/, '').replace(/[[\]\n\r]/g, ' ').trim() || 'Image';
+}
+
 function isImageFile(file) {
   return Boolean(file && (/^image\//.test(file.type) || /\.(jpe?g|png|webp|gif)$/i.test(file.name || '')));
 }
@@ -295,10 +292,11 @@ function droppedFilePaths(event) {
     .filter(Boolean);
 }
 
-function firstDroppedImagePath(event) {
-  const files = Array.from(event.dataTransfer?.files || []);
-  const image = files.find(isImageFile);
-  return image?.path || '';
+function droppedImagePaths(event) {
+  return Array.from(event.dataTransfer?.files || [])
+    .filter(isImageFile)
+    .map((file) => file.path)
+    .filter(Boolean);
 }
 
 function formatFileSize(bytes = 0) {
@@ -310,7 +308,10 @@ function formatFileSize(bytes = 0) {
 
 function inlineMarkdown(value) {
   return escapeHtml(value)
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2" />')
+    .replace(
+      /!\[([^\]]*)\]\(([^)]+)\)/g,
+      (_match, alt, src) => `<img alt="${alt}" src="${escapeHtml(filePathToUrl(src))}" />`
+    )
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/\*([^*]+)\*/g, '<em>$1</em>');
@@ -413,27 +414,28 @@ function renderArticleList() {
   }
 }
 
-function updateCoverPreview() {
-  const coverPath = elements.coverPathInput.value.trim();
-  const hasImage = Boolean(coverPath);
-
-  elements.coverDropzone.classList.toggle('has-image', hasImage);
-  elements.coverEmpty.hidden = hasImage;
-  elements.coverPreview.hidden = !hasImage;
-
-  if (hasImage) {
-    elements.coverPreviewImage.src = filePathToUrl(coverPath);
-    elements.coverFileName.textContent = fileNameFromPath(coverPath);
-  } else {
-    elements.coverPreviewImage.removeAttribute('src');
-    elements.coverFileName.textContent = '';
-  }
-}
-
-async function setCoverPath(filePath, { save = true } = {}) {
+async function insertImageAtCursor(filePath, { save = true } = {}) {
   if (!filePath) return;
-  elements.coverPathInput.value = filePath;
-  updateCoverPreview();
+
+  const input = elements.contentInput;
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? start;
+  const before = input.value.slice(0, start);
+  const after = input.value.slice(end);
+  const imageMarkdown = `![${imageAltFromPath(filePath)}](${filePathToUrl(filePath)})`;
+  const prefix = before && !before.endsWith('\n') ? '\n\n' : '';
+  const suffix = after && !after.startsWith('\n') ? '\n\n' : '\n';
+  const insertion = `${prefix}${imageMarkdown}${suffix}`;
+  const cursorPosition = before.length + insertion.length;
+
+  input.value = `${before}${insertion}${after}`;
+  input.focus();
+  input.setSelectionRange(cursorPosition, cursorPosition);
+
+  if (!elements.coverPathInput.value.trim()) {
+    elements.coverPathInput.value = filePath;
+  }
+
   renderPreview();
   if (save) {
     await saveCurrentArticle({ quiet: true });
@@ -449,7 +451,6 @@ function renderEditor() {
   elements.digestInput.value = article.digest || '';
   elements.sourceUrlInput.value = article.sourceUrl || '';
   elements.coverPathInput.value = article.coverPath || '';
-  updateCoverPreview();
   elements.showCoverInput.checked = article.showCover !== false;
   elements.openCommentInput.checked = Boolean(article.openComment);
   elements.contentInput.value = article.contentMarkdown || '';
@@ -463,13 +464,8 @@ function renderEditor() {
 function renderPreview() {
   const article = getEditorArticle();
   const html = markdownToHtml(article.contentMarkdown);
-  const coverHtml =
-    article.coverPath && article.showCover
-      ? `<figure class="preview-cover"><img alt="Article cover" src="${escapeHtml(filePathToUrl(article.coverPath))}" /></figure>`
-      : '';
   elements.preview.innerHTML = `
     <h1>${escapeHtml(article.title || 'Untitled Article')}</h1>
-    ${coverHtml}
     ${article.digest ? `<blockquote>${escapeHtml(article.digest)}</blockquote>` : ''}
     ${html}
   `;
@@ -788,45 +784,36 @@ elements.deleteButton.addEventListener('click', async () => {
   render();
 });
 
-async function chooseCoverImage() {
+async function chooseDraftImage() {
   const filePath = await bridge.chooseImage();
   if (filePath) {
-    await setCoverPath(filePath);
+    await insertImageAtCursor(filePath);
   }
 }
 
-elements.chooseCoverButton.addEventListener('click', chooseCoverImage);
-elements.importCoverButton.addEventListener('click', chooseCoverImage);
-elements.replaceCoverButton.addEventListener('click', chooseCoverImage);
-elements.removeCoverButton.addEventListener('click', async () => {
-  elements.coverPathInput.value = '';
-  updateCoverPreview();
-  renderPreview();
-  await saveCurrentArticle({ quiet: true });
-});
+elements.chooseCoverButton.addEventListener('click', chooseDraftImage);
 
 window.addEventListener('dragover', (event) => event.preventDefault());
 window.addEventListener('drop', (event) => event.preventDefault());
 
-['dragenter', 'dragover'].forEach((eventName) => {
-  elements.coverDropzone.addEventListener(eventName, (event) => {
+elements.contentInput.addEventListener('dragover', (event) => {
+  if (droppedImagePaths(event).length) {
     event.preventDefault();
-    elements.coverDropzone.classList.add('drag-over');
-  });
-});
-
-['dragleave', 'drop'].forEach((eventName) => {
-  elements.coverDropzone.addEventListener(eventName, () => {
-    elements.coverDropzone.classList.remove('drag-over');
-  });
-});
-
-elements.coverDropzone.addEventListener('drop', async (event) => {
-  event.preventDefault();
-  const filePath = firstDroppedImagePath(event);
-  if (filePath) {
-    await setCoverPath(filePath);
+    elements.contentInput.classList.add('image-drag-over');
   }
+});
+
+elements.contentInput.addEventListener('dragleave', () => {
+  elements.contentInput.classList.remove('image-drag-over');
+});
+
+elements.contentInput.addEventListener('drop', async (event) => {
+  event.preventDefault();
+  elements.contentInput.classList.remove('image-drag-over');
+  for (const filePath of droppedImagePaths(event)) {
+    await insertImageAtCursor(filePath, { save: false });
+  }
+  await saveCurrentArticle({ quiet: true });
 });
 
 elements.assistantAttachButton.addEventListener('click', async () => {

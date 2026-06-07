@@ -1,6 +1,6 @@
 {
   "name": "wechat-writing-studio",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "A local AI-assisted writing desk for WeChat Official Account publishing.",
   "author": "Allen",
   "main": "main.js",

@@ -489,7 +489,7 @@ ipcMain.handle('account:openChatGpt', async () => {
 
 ipcMain.handle('dialog:chooseImage', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Choose Cover Image',
+    title: 'Choose Image',
     properties: ['openFile'],
     filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'webp'] }]
   });
