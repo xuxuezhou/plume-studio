@@ -114,23 +114,35 @@ select:focus {
   box-shadow: 0 0 0 4px var(--focus);
 }
 
-::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+.scroll-reveal {
+  scrollbar-color: transparent transparent;
+  scrollbar-width: none;
 }
 
-::-webkit-scrollbar-track {
-  background: color-mix(in srgb, var(--paper) 72%, var(--surface));
+.scroll-reveal::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
-::-webkit-scrollbar-thumb {
-  border: 3px solid color-mix(in srgb, var(--paper) 72%, var(--surface));
+.scroll-reveal.is-scrolling {
+  scrollbar-color: color-mix(in srgb, var(--accent) 64%, var(--line)) transparent;
+  scrollbar-width: thin;
+}
+
+.scroll-reveal.is-scrolling::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scroll-reveal.is-scrolling::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-reveal.is-scrolling::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 42%, var(--line));
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-2);
+  background: color-mix(in srgb, var(--accent) 64%, var(--line));
+  background-clip: padding-box;
 }
 
 .app-shell {
@@ -667,20 +679,19 @@ body[data-theme="dark"] .theme-toggle::after {
 
 .editor-stage {
   min-height: 0;
-  overflow: scroll;
-  scrollbar-gutter: stable both-edges;
-  padding: 32px 38px 88px;
+  overflow: auto;
+  padding: 46px clamp(28px, 6vw, 84px) 96px;
 }
 
 .editor-sheet {
-  max-width: 780px;
-  min-height: calc(100vh - 132px);
+  max-width: 820px;
+  min-height: calc(100vh - 168px);
   margin: 0 auto;
-  padding: 40px 48px 28px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: var(--sheet);
-  box-shadow: var(--shadow);
+  padding: 34px 28px 28px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .doc-kicker {
@@ -726,19 +737,29 @@ body[data-theme="dark"] .theme-toggle::after {
 .meta-grid input,
 .field-line input {
   height: 38px;
-  padding: 0 12px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.meta-grid input:focus,
+.field-line input:focus {
+  border-color: var(--accent);
+  box-shadow: none;
 }
 
 #contentInput {
   height: calc(100vh - 350px);
   min-height: 430px;
   overflow: auto;
-  scrollbar-gutter: stable;
   resize: none;
   padding: 22px 0;
   border: 0;
   border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 0;
   border-radius: 0;
   background: transparent;
   font-family:
@@ -790,9 +811,8 @@ body[data-theme="dark"] .theme-toggle::after {
   display: none;
   min-height: 0;
   height: 100%;
-  overflow: scroll;
-  scrollbar-gutter: stable both-edges;
-  padding: 24px 24px 76px;
+  overflow: auto;
+  padding: 28px clamp(22px, 4vw, 48px) 84px;
 }
 
 .panel.active {
@@ -803,11 +823,11 @@ body[data-theme="dark"] .theme-toggle::after {
   max-width: 720px;
   min-height: calc(100vh - 104px);
   margin: 0 auto;
-  padding: 38px 40px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: var(--sheet);
-  box-shadow: var(--shadow);
+  padding: 26px 12px 48px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   line-height: 1.82;
   overflow-wrap: break-word;
 }
@@ -885,10 +905,11 @@ body[data-theme="dark"] .theme-toggle::after {
   gap: 10px;
   align-items: center;
   margin: 0 0 14px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface);
+  padding: 0 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
 }
 
 .assistant-controls label {
@@ -913,11 +934,12 @@ body[data-theme="dark"] .theme-toggle::after {
 .assistant-output {
   min-height: 260px;
   margin: 12px 0;
-  padding: 14px;
+  padding: 14px 0;
   overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface);
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
   white-space: pre-wrap;
   line-height: 1.68;
 }
@@ -960,12 +982,13 @@ body[data-theme="dark"] .theme-toggle::after {
 #wechatLog {
   min-height: 180px;
   margin: 0;
-  padding: 12px;
+  padding: 12px 0;
   overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--log-bg);
-  color: var(--log-ink);
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
   white-space: pre-wrap;
 }
 
@@ -1025,7 +1048,6 @@ body[data-theme="dark"] .theme-toggle::after {
 
 .settings-body {
   overflow: auto;
-  scrollbar-gutter: stable;
   padding: 22px 28px 28px;
 }
 

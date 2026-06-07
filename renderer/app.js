@@ -477,6 +477,37 @@ function closeSettings() {
   elements.settingsModal.setAttribute('hidden', '');
 }
 
+function setupTransientScrollbars() {
+  const scrollables = document.querySelectorAll(
+    [
+      '.article-list',
+      '.editor-stage',
+      '#contentInput',
+      '.panel',
+      '.assistant-output',
+      '#wechatLog',
+      '.settings-body'
+    ].join(',')
+  );
+
+  scrollables.forEach((element) => {
+    let hideTimer;
+
+    function showScrollbar() {
+      element.classList.add('scroll-reveal', 'is-scrolling');
+      window.clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(() => {
+        element.classList.remove('is-scrolling');
+      }, 760);
+    }
+
+    element.classList.add('scroll-reveal');
+    element.addEventListener('scroll', showScrollbar, { passive: true });
+    element.addEventListener('wheel', showScrollbar, { passive: true });
+    element.addEventListener('touchmove', showScrollbar, { passive: true });
+  });
+}
+
 function setActiveTab(tabName) {
   const tab = document.querySelector(`.tab[data-tab="${tabName}"]`);
   const panel = document.querySelector(`#${tabName}Panel`);
@@ -763,6 +794,7 @@ window.addEventListener('keydown', (event) => {
   }
 });
 
+setupTransientScrollbars();
 applyLayout();
 load();
 window.__WEWRITE_READY = true;
