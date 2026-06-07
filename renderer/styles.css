@@ -841,7 +841,7 @@ body[data-theme="dark"] .theme-toggle::after {
 
 .assistant-panel.active {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
 #preview {
@@ -886,30 +886,6 @@ body[data-theme="dark"] .theme-toggle::after {
 #preview img {
   max-width: 100%;
   border-radius: 10px;
-}
-
-.assistant-tabs {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  min-width: 0;
-  height: 52px;
-  overflow: hidden;
-  border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--surface) 72%, transparent);
-}
-
-.assistant-tab {
-  height: 52px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--muted);
-  font-weight: 800;
-}
-
-.assistant-tab.active {
-  color: var(--accent);
-  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 .assistant-toolbar {
