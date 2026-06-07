@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WeWrite Studio</title>
-    <link rel="stylesheet" href="./styles.css?v=0.1.11" />
+    <link rel="stylesheet" href="./styles.css?v=0.1.12" />
   </head>
   <body>
     <div class="app-shell">
@@ -77,15 +77,28 @@
           <article class="editor-sheet">
             <div class="doc-kicker">Local WeChat Draft</div>
             <textarea id="titleInput" class="title-input" placeholder="Article title" rows="2"></textarea>
-            <div class="meta-grid">
+            <div class="byline-row">
               <input id="authorInput" placeholder="Author" />
-              <input id="digestInput" placeholder="Digest" />
             </div>
+            <section class="cover-dropzone" id="coverDropzone" aria-label="Article image drop area">
+              <div class="cover-empty" id="coverEmpty">
+                <div>
+                  <strong>Drop an image into this draft</strong>
+                  <span>Use it as the WeChat cover, or import one from your Mac.</span>
+                </div>
+                <button id="importCoverButton" type="button">Import Image</button>
+              </div>
+              <figure class="cover-preview" id="coverPreview" hidden>
+                <img id="coverPreviewImage" alt="Draft cover" />
+                <figcaption id="coverFileName"></figcaption>
+                <div class="cover-preview-actions">
+                  <button id="replaceCoverButton" type="button">Replace</button>
+                  <button id="removeCoverButton" type="button">Remove</button>
+                </div>
+              </figure>
+            </section>
             <textarea id="contentInput" spellcheck="false"></textarea>
-            <div class="field-line">
-              <input id="coverPathInput" placeholder="Cover image path" />
-              <input id="sourceUrlInput" placeholder="Source URL" />
-            </div>
+            <input id="coverPathInput" type="hidden" />
           </article>
         </section>
       </main>
@@ -191,6 +204,10 @@
           <button id="publishButton">Submit Publish</button>
           <button id="statusButton">Check Status</button>
           <div class="publish-fields">
+            <label>WeChat summary</label>
+            <textarea id="digestInput" rows="3" placeholder="Short summary shown in WeChat article lists"></textarea>
+            <label>Source URL</label>
+            <input id="sourceUrlInput" placeholder="Optional original link" />
             <label>draft media_id</label>
             <input id="draftMediaIdInput" readonly />
             <label>publish_id</label>
@@ -249,6 +266,6 @@
       </section>
     </div>
 
-    <script src="./app.js?v=0.1.11"></script>
+    <script src="./app.js?v=0.1.12"></script>
   </body>
 </html>
