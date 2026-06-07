@@ -1109,10 +1109,8 @@ body[data-theme="dark"] .theme-toggle::after {
   overflow: hidden;
 }
 
-.assistant-icon-button,
-.assistant-chip,
-.assistant-pill,
-.assistant-mode-select {
+.assistant-import-button,
+.assistant-model-select {
   flex: 0 1 auto;
   height: 30px;
   border-color: var(--line);
@@ -1120,36 +1118,15 @@ body[data-theme="dark"] .theme-toggle::after {
   font-weight: 650;
 }
 
-.assistant-icon-button {
-  width: 30px;
-  padding: 0;
-}
-
-.assistant-pill {
+.assistant-import-button {
   padding: 0 12px;
-  color: var(--muted);
-}
-
-.assistant-pill.active {
   color: var(--ink);
-  background: var(--surface);
 }
 
-.assistant-search-pill.active {
-  border-color: transparent;
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.assistant-chip {
-  padding: 0 10px;
-  min-width: 0;
-}
-
-.assistant-mode-select {
+.assistant-model-select {
   width: auto;
   max-width: 100%;
-  min-width: 106px;
+  min-width: 132px;
   padding: 0 24px 0 10px;
   border-radius: 999px;
 }
@@ -1182,15 +1159,6 @@ body[data-theme="dark"] .theme-toggle::after {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2.4;
-}
-
-.assistant-result-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 10px;
-  min-width: 0;
 }
 
 .status-strip {

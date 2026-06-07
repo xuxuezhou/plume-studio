@@ -107,10 +107,7 @@ const state = {
   settings: {},
   layout: loadLayout(),
   activeId: '',
-  assistantText: '',
   assistantAttachments: [],
-  assistantSmartEnabled: true,
-  assistantSearchEnabled: true,
   saving: false
 };
 
@@ -140,22 +137,16 @@ const elements = {
   draftCount: document.querySelector('#draftCount'),
   assistantAttachments: document.querySelector('#assistantAttachments'),
   assistantNote: document.querySelector('#assistantNote'),
-  assistantModeSelect: document.querySelector('#assistantModeSelect'),
+  assistantModelSelect: document.querySelector('#assistantModelSelect'),
   assistantAttachButton: document.querySelector('#assistantAttachButton'),
-  assistantSmartButton: document.querySelector('#assistantSmartButton'),
-  assistantSearchButton: document.querySelector('#assistantSearchButton'),
   assistantSendButton: document.querySelector('#assistantSendButton'),
-  assistantResultActions: document.querySelector('#assistantResultActions'),
   assistantOutput: document.querySelector('#assistantOutput'),
-  insertAssistantButton: document.querySelector('#insertAssistantButton'),
-  replaceAssistantButton: document.querySelector('#replaceAssistantButton'),
   wechatStatus: document.querySelector('#wechatStatus'),
   wechatLog: document.querySelector('#wechatLog'),
   draftMediaIdInput: document.querySelector('#draftMediaIdInput'),
   publishIdInput: document.querySelector('#publishIdInput'),
   articleIdInput: document.querySelector('#articleIdInput'),
   openaiApiKeyInput: document.querySelector('#openaiApiKeyInput'),
-  openaiModelSelect: document.querySelector('#openaiModelSelect'),
   wechatAppIdInput: document.querySelector('#wechatAppIdInput'),
   wechatAppSecretInput: document.querySelector('#wechatAppSecretInput'),
   settingsState: document.querySelector('#settingsState'),
@@ -505,18 +496,8 @@ async function attachFilesFromPaths(filePaths = []) {
   addAssistantAttachments(attachments);
 }
 
-function setAssistantSearchEnabled(enabled) {
-  state.assistantSearchEnabled = enabled;
-  elements.assistantSearchButton.classList.toggle('active', enabled);
-}
-
-function setAssistantSmartEnabled(enabled) {
-  state.assistantSmartEnabled = enabled;
-  elements.assistantSmartButton.classList.toggle('active', enabled);
-}
-
 function renderSettings() {
-  elements.openaiModelSelect.value = state.settings.openaiModel || 'gpt-5.4-mini';
+  elements.assistantModelSelect.value = state.settings.openaiModel || 'gpt-5.4-mini';
   elements.wechatAppIdInput.value = state.settings.wechatAppId || '';
   elements.settingsState.textContent = [
     `OpenAI key: ${state.settings.hasOpenaiApiKey ? 'saved' : 'not saved'}`,
@@ -533,8 +514,6 @@ function render() {
   renderArticleList();
   renderEditor();
   renderAssistantAttachments();
-  setAssistantSmartEnabled(state.assistantSmartEnabled);
-  setAssistantSearchEnabled(state.assistantSearchEnabled);
   renderSettings();
 }
 
@@ -724,9 +703,9 @@ elements.settingsModal.addEventListener('click', (event) => {
   }
 });
 
-elements.openaiModelSelect.addEventListener('change', async () => {
+elements.assistantModelSelect.addEventListener('change', async () => {
   const settings = await bridge.saveSettings({
-    openaiModel: elements.openaiModelSelect.value
+    openaiModel: elements.assistantModelSelect.value
   });
   state.settings = settings;
   renderSettings();
@@ -831,14 +810,6 @@ elements.assistantAttachments.addEventListener('click', (event) => {
   renderAssistantAttachments();
 });
 
-elements.assistantSmartButton.addEventListener('click', () => {
-  setAssistantSmartEnabled(!state.assistantSmartEnabled);
-});
-
-elements.assistantSearchButton.addEventListener('click', () => {
-  setAssistantSearchEnabled(!state.assistantSearchEnabled);
-});
-
 const assistantComposer = document.querySelector('.assistant-composer');
 ['dragenter', 'dragover'].forEach((eventName) => {
   assistantComposer.addEventListener(eventName, (event) => {
@@ -879,26 +850,19 @@ async function runAssistantRequest() {
   );
 
   setBusy(elements.assistantSendButton, true, '...');
-  elements.assistantResultActions.hidden = true;
   elements.assistantOutput.textContent = '';
 
   try {
     const result = await bridge.runAssistant({
-      action: elements.assistantModeSelect.value || 'balanced',
+      action: 'assist',
       article,
       selection,
       note: elements.assistantNote.value.trim(),
-      attachments: state.assistantAttachments,
-      smartEnabled: state.assistantSmartEnabled,
-      searchEnabled: state.assistantSearchEnabled
+      attachments: state.assistantAttachments
     });
-    state.assistantText = result.text;
     elements.assistantOutput.textContent = result.text;
-    elements.assistantResultActions.hidden = false;
   } catch (error) {
-    state.assistantText = '';
     elements.assistantOutput.textContent = error.message;
-    elements.assistantResultActions.hidden = true;
   } finally {
     setBusy(elements.assistantSendButton, false);
   }
@@ -910,21 +874,6 @@ elements.assistantNote.addEventListener('keydown', (event) => {
     event.preventDefault();
     runAssistantRequest();
   }
-});
-
-elements.insertAssistantButton.addEventListener('click', () => {
-  if (!state.assistantText) return;
-  const start = elements.contentInput.selectionStart;
-  const end = elements.contentInput.selectionEnd;
-  const value = elements.contentInput.value;
-  elements.contentInput.value = `${value.slice(0, start)}${state.assistantText}${value.slice(end)}`;
-  renderPreview();
-});
-
-elements.replaceAssistantButton.addEventListener('click', () => {
-  if (!state.assistantText) return;
-  elements.contentInput.value = state.assistantText;
-  renderPreview();
 });
 
 document.querySelector('#saveSettingsButton').addEventListener('click', async () => {

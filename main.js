@@ -498,11 +498,11 @@ ipcMain.handle('dialog:chooseImage', async () => {
 
 ipcMain.handle('dialog:chooseFiles', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Attach Context Files',
+    title: 'Import Documents',
     properties: ['openFile', 'multiSelections'],
     filters: [
       {
-        name: 'Documents, text, and images',
+        name: 'Documents and text',
         extensions: [
           'txt',
           'md',
@@ -514,14 +514,9 @@ ipcMain.handle('dialog:chooseFiles', async () => {
           'html',
           'xml',
           'pdf',
-          'docx',
-          'png',
-          'jpg',
-          'jpeg',
-          'webp'
+          'docx'
         ]
-      },
-      { name: 'All files', extensions: ['*'] }
+      }
     ]
   });
   return result.canceled ? [] : describeAttachments(result.filePaths);
@@ -538,9 +533,7 @@ ipcMain.handle('assistant:run', async (_event, payload) => {
     article: payload.article,
     selection: payload.selection,
     note: payload.note,
-    attachments: payload.attachments,
-    smartEnabled: payload.smartEnabled,
-    searchEnabled: payload.searchEnabled
+    attachments: payload.attachments
   });
 });
 

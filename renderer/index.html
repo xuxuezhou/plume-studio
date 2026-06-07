@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WeWrite Studio</title>
-    <link rel="stylesheet" href="./styles.css?v=0.1.15" />
+    <link rel="stylesheet" href="./styles.css?v=0.1.16" />
   </head>
   <body>
     <div class="app-shell">
@@ -155,11 +155,11 @@
             <div class="assistant-attachments" id="assistantAttachments" hidden></div>
             <textarea id="assistantNote" class="assistant-input" placeholder="Ask anything about this draft or highlighted text..."></textarea>
             <div class="assistant-composer-bar">
-              <button class="assistant-icon-button" id="assistantAttachButton" type="button" title="Attach files" aria-label="Attach files">+</button>
-              <button class="assistant-pill active" id="assistantSmartButton" type="button">Smart</button>
-              <button class="assistant-pill assistant-search-pill active" id="assistantSearchButton" type="button">Search</button>
-              <select id="assistantModeSelect" class="assistant-mode-select" title="Response balance">
-                <option value="balanced">Balanced</option>
+              <button class="assistant-import-button" id="assistantAttachButton" type="button">Import Doc</button>
+              <select id="assistantModelSelect" class="assistant-model-select" title="Model">
+                <option value="gpt-5.4-mini">gpt-5.4-mini</option>
+                <option value="gpt-5.4">gpt-5.4</option>
+                <option value="gpt-5.5">gpt-5.5</option>
               </select>
               <div class="assistant-composer-spacer"></div>
               <button class="assistant-send-button" id="assistantSendButton" type="button" title="Send" aria-label="Send">
@@ -168,10 +168,6 @@
                   <path d="m6 11 6-6 6 6" />
                 </svg>
               </button>
-            </div>
-            <div class="assistant-result-actions" id="assistantResultActions" hidden>
-              <button class="assistant-chip" id="insertAssistantButton" type="button">Insert</button>
-              <button class="assistant-chip" id="replaceAssistantButton" type="button">Replace Draft</button>
             </div>
           </div>
         </section>
@@ -216,12 +212,6 @@
             <p>The writing assistant uses the OpenAI API. ChatGPT web sign-in does not authorize API calls.</p>
             <label>OpenAI API Key</label>
             <input id="openaiApiKeyInput" type="password" placeholder="Leave blank to keep current key" />
-            <label>OpenAI Model</label>
-            <select id="openaiModelSelect">
-              <option value="gpt-5.4-mini">gpt-5.4-mini</option>
-              <option value="gpt-5.4">gpt-5.4</option>
-              <option value="gpt-5.5">gpt-5.5</option>
-            </select>
           </section>
 
           <section class="settings-section">
@@ -251,6 +241,6 @@
       </section>
     </div>
 
-    <script src="./app.js?v=0.1.15"></script>
+    <script src="./app.js?v=0.1.16"></script>
   </body>
 </html>
