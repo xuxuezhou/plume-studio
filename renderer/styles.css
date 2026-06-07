@@ -834,6 +834,7 @@ body[data-theme="dark"] .theme-toggle::after {
 
 .assistant-panel {
   padding: 0;
+  overflow-x: hidden;
 }
 
 .assistant-panel.active {
@@ -888,7 +889,9 @@ body[data-theme="dark"] .theme-toggle::after {
 .assistant-tabs {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  min-width: 0;
   height: 52px;
+  overflow: hidden;
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--surface) 72%, transparent);
 }
@@ -909,8 +912,10 @@ body[data-theme="dark"] .theme-toggle::after {
 
 .assistant-toolbar {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 22px;
+  min-width: 0;
   min-height: 34px;
   padding: 7px 24px;
   border-bottom: 1px solid var(--line);
@@ -937,6 +942,7 @@ body[data-theme="dark"] .theme-toggle::after {
 .assistant-home {
   min-height: 0;
   overflow: auto;
+  overflow-x: hidden;
   padding: 22px 24px 16px;
 }
 
@@ -962,12 +968,14 @@ body[data-theme="dark"] .theme-toggle::after {
 
 .assistant-card-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
+  min-width: 0;
 }
 
 .assistant-card {
   min-height: 160px;
+  min-width: 0;
   padding: 18px 16px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -976,7 +984,7 @@ body[data-theme="dark"] .theme-toggle::after {
 }
 
 .assistant-card-wide {
-  grid-column: 1 / -1;
+  grid-column: auto;
   min-height: 168px;
 }
 
@@ -998,6 +1006,7 @@ body[data-theme="dark"] .theme-toggle::after {
   color: var(--muted);
   font-size: 14px;
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .assistant-card p {
@@ -1015,6 +1024,7 @@ body[data-theme="dark"] .theme-toggle::after {
   margin: 16px 0 0;
   padding: 14px 0;
   overflow: auto;
+  overflow-x: hidden;
   border: 0;
   border-top: 1px solid var(--line);
   background: transparent;
@@ -1036,6 +1046,8 @@ body[data-theme="dark"] .theme-toggle::after {
 .assistant-composer {
   margin: 0 24px 16px;
   padding: 14px;
+  min-width: 0;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: color-mix(in srgb, var(--surface) 92%, transparent);
@@ -1059,16 +1071,17 @@ body[data-theme="dark"] .theme-toggle::after {
 
 .assistant-composer-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  overflow-x: auto;
+  overflow: hidden;
 }
 
 .assistant-icon-button,
 .assistant-chip,
 .assistant-composer select {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   height: 30px;
   border-color: var(--line);
   font-size: 12px;
@@ -1082,6 +1095,7 @@ body[data-theme="dark"] .theme-toggle::after {
 
 .assistant-chip {
   padding: 0 10px;
+  min-width: 0;
 }
 
 .assistant-chip[data-action="rewrite"] {
@@ -1092,6 +1106,7 @@ body[data-theme="dark"] .theme-toggle::after {
 
 .assistant-composer select {
   width: auto;
+  max-width: 100%;
   min-width: 92px;
   padding: 0 10px;
   border-radius: 999px;
