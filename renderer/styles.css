@@ -156,7 +156,7 @@ select:focus {
 
 body.drafts-hidden .app-shell {
   grid-template-columns:
-    var(--rail-width) var(--drawer-width) var(--handle-size) minmax(460px, 1fr)
+    var(--rail-width) 0 0 minmax(460px, 1fr)
     var(--handle-size) var(--inspector-width);
 }
 
@@ -167,12 +167,11 @@ body.inspector-hidden .app-shell {
 }
 
 body.drafts-hidden.inspector-hidden .app-shell {
-  grid-template-columns:
-    var(--rail-width) var(--drawer-width) var(--handle-size)
-    minmax(460px, 1fr) 0 0;
+  grid-template-columns: var(--rail-width) 0 0 minmax(460px, 1fr) 0 0;
 }
 
 .sidebar {
+  grid-column: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -419,21 +418,15 @@ body.drafts-hidden .rail-collapse-icon::after,
 }
 
 .draft-drawer {
+  grid-column: 2;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   border-right: 1px solid var(--line);
 }
 
+body.drafts-hidden .draft-drawer,
 body.inspector-hidden .inspector {
   display: none;
-}
-
-body.drafts-hidden .draft-drawer {
-  pointer-events: none;
-}
-
-body.drafts-hidden .draft-drawer > * {
-  visibility: hidden;
 }
 
 .drawer-header {
@@ -529,6 +522,14 @@ body.drafts-hidden .draft-drawer > * {
   cursor: col-resize;
 }
 
+#draftResizeHandle {
+  grid-column: 3;
+}
+
+#inspectorResizeHandle {
+  grid-column: 5;
+}
+
 .resize-handle::after {
   content: "";
   position: absolute;
@@ -546,11 +547,11 @@ body.resizing .resize-handle::after {
 
 body.drafts-hidden #draftResizeHandle,
 body.inspector-hidden #inspectorResizeHandle {
-  pointer-events: none;
-  visibility: hidden;
+  display: none;
 }
 
 .workspace {
+  grid-column: 4;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
@@ -789,6 +790,7 @@ body[data-theme="dark"] .theme-toggle::after {
 }
 
 .inspector {
+  grid-column: 6;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   border-left: 1px solid var(--line);
