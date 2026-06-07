@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WeWrite Studio</title>
-    <link rel="stylesheet" href="./styles.css?v=0.1.6" />
+    <link rel="stylesheet" href="./styles.css?v=0.1.7" />
   </head>
   <body>
     <div class="app-shell">
@@ -103,33 +103,84 @@
           <article id="preview"></article>
         </section>
 
-        <section class="panel" id="assistantPanel">
-          <div class="assistant-hero">
-            <div class="spark">✧</div>
-            <h2>Writing Assistant</h2>
-            <p>Work from the selected text or the full draft.</p>
+        <section class="panel assistant-panel" id="assistantPanel">
+          <div class="assistant-tabs" aria-label="Assistant workspace">
+            <button class="assistant-tab active" type="button">Assistant</button>
+            <button class="assistant-tab" type="button">My Notes</button>
+            <button class="assistant-tab" type="button">Comments</button>
+            <button class="assistant-tab" type="button">Similar</button>
           </div>
-          <div class="assistant-controls">
-            <label for="assistantModelSelect">Model</label>
-            <select id="assistantModelSelect">
-              <option value="gpt-5.4-mini">gpt-5.4-mini</option>
-              <option value="gpt-5.4">gpt-5.4</option>
-              <option value="gpt-5.5">gpt-5.5</option>
-            </select>
+
+          <div class="assistant-toolbar">
+            <button class="assistant-toolbar-button" type="button">+ New Chat</button>
+            <button class="assistant-toolbar-button" type="button">History</button>
           </div>
-          <div class="tool-grid">
-            <button data-action="outline">Outline</button>
-            <button data-action="titles">Titles</button>
-            <button data-action="rewrite">Rewrite</button>
-            <button data-action="summary">Digest</button>
-            <button data-action="review">Review</button>
-            <button data-action="format">Format</button>
+
+          <div class="assistant-home">
+            <div class="assistant-mark" aria-hidden="true">
+              <svg viewBox="0 0 32 32">
+                <path d="M13 5 9 20l14-4-8 11" />
+                <path d="M23 6h4M25 4v4M6 25h4M8 23v4" />
+              </svg>
+            </div>
+
+            <div class="assistant-card-grid">
+              <section class="assistant-card">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m4 18 5-1 9-9-4-4-9 9-1 5Z" />
+                  <path d="m13 5 4 4" />
+                </svg>
+                <h3>Highlight & Polish</h3>
+                <p>Select any sentence or paragraph to tighten phrasing, tone, or structure.</p>
+              </section>
+
+              <section class="assistant-card">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M16 8a4 4 0 1 0-1.17 2.83L16 12a3 3 0 1 0 0-4Z" />
+                  <path d="M8 16h8" />
+                </svg>
+                <h3>Add Writing Context</h3>
+                <p>Use @audience, @goal, or @tone so the assistant can shape the draft with intent.</p>
+              </section>
+
+              <section class="assistant-card assistant-card-wide">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3 9.5 7.5 5 10l4.5 2.5L12 17l2.5-4.5L19 10l-4.5-2.5L12 3Z" />
+                  <path d="M5 18h4M15 18h4" />
+                </svg>
+                <h3>Draft Support</h3>
+                <ul>
+                  <li>Build an outline from rough notes</li>
+                  <li>Generate title and hook options</li>
+                  <li>Tighten the digest before publishing</li>
+                  <li>Check flow, clarity, and transitions</li>
+                </ul>
+              </section>
+            </div>
+
+            <div class="assistant-output" id="assistantOutput"></div>
+            <p class="assistant-suggestion">Try asking "Make this opening sharper for busy readers."</p>
           </div>
-          <textarea id="assistantNote" class="small-textarea" placeholder="Extra instructions"></textarea>
-          <div class="assistant-output" id="assistantOutput"></div>
-          <div class="split-actions">
-            <button id="insertAssistantButton">Insert</button>
-            <button id="replaceAssistantButton">Replace Draft</button>
+
+          <div class="assistant-composer">
+            <textarea id="assistantNote" class="assistant-input" placeholder="Ask anything about this draft or highlighted text..."></textarea>
+            <div class="assistant-composer-bar">
+              <button class="assistant-icon-button" type="button" title="Attach context">+</button>
+              <select id="assistantModelSelect" title="Model">
+                <option value="gpt-5.4-mini">gpt-5.4-mini</option>
+                <option value="gpt-5.4">gpt-5.4</option>
+                <option value="gpt-5.5">gpt-5.5</option>
+              </select>
+              <button class="assistant-chip" data-action="outline">Outline</button>
+              <button class="assistant-chip" data-action="titles">Titles</button>
+              <button class="assistant-chip" data-action="rewrite">Rewrite</button>
+              <button class="assistant-chip" data-action="summary">Digest</button>
+              <button class="assistant-chip" data-action="review">Review</button>
+              <button class="assistant-chip" data-action="format">Format</button>
+              <div class="assistant-composer-spacer"></div>
+              <button class="assistant-chip" id="insertAssistantButton">Insert</button>
+              <button class="assistant-chip" id="replaceAssistantButton">Replace</button>
+            </div>
           </div>
         </section>
 
@@ -198,6 +249,6 @@
       </section>
     </div>
 
-    <script src="./app.js?v=0.1.6"></script>
+    <script src="./app.js?v=0.1.7"></script>
   </body>
 </html>

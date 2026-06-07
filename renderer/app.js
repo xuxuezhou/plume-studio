@@ -484,7 +484,10 @@ function setupTransientScrollbars() {
       '.editor-stage',
       '#contentInput',
       '.panel',
+      '.assistant-home',
       '.assistant-output',
+      '.assistant-composer-bar',
+      '.assistant-input',
       '#wechatLog',
       '.settings-body'
     ].join(',')
