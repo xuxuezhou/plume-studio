@@ -156,7 +156,7 @@ select:focus {
 
 body.drafts-hidden .app-shell {
   grid-template-columns:
-    var(--rail-width) 0 0 minmax(460px, 1fr)
+    var(--rail-width) var(--drawer-width) var(--handle-size) minmax(460px, 1fr)
     var(--handle-size) var(--inspector-width);
 }
 
@@ -167,7 +167,9 @@ body.inspector-hidden .app-shell {
 }
 
 body.drafts-hidden.inspector-hidden .app-shell {
-  grid-template-columns: var(--rail-width) 0 0 minmax(460px, 1fr) 0 0;
+  grid-template-columns:
+    var(--rail-width) var(--drawer-width) var(--handle-size)
+    minmax(460px, 1fr) 0 0;
 }
 
 .sidebar {
@@ -422,9 +424,16 @@ body.drafts-hidden .rail-collapse-icon::after,
   border-right: 1px solid var(--line);
 }
 
-body.drafts-hidden .draft-drawer,
 body.inspector-hidden .inspector {
   display: none;
+}
+
+body.drafts-hidden .draft-drawer {
+  pointer-events: none;
+}
+
+body.drafts-hidden .draft-drawer > * {
+  visibility: hidden;
 }
 
 .drawer-header {
@@ -537,7 +546,8 @@ body.resizing .resize-handle::after {
 
 body.drafts-hidden #draftResizeHandle,
 body.inspector-hidden #inspectorResizeHandle {
-  display: none;
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .workspace {
