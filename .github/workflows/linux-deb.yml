@@ -1,0 +1,55 @@
+name: Build Linux deb
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  linux-deb:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Linux deb
+        run: npm run dist:linux
+
+      - name: Upload deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wechat-writing-studio-linux-deb
+          path: release/*.deb
+          if-no-files-found: error
+
+      - name: Attach deb to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            tag="${{ github.event.release.tag_name }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+            gh release view "$tag" >/dev/null 2>&1 || \
+              gh release create "$tag" --title "$tag" --notes "Linux .deb package for WeWrite Studio."
+          fi
+
+          gh release upload "$tag" release/*.deb --clobber

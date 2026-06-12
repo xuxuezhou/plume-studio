@@ -8,12 +8,17 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "pack": "electron-builder --mac dir",
-    "dist": "electron-builder --mac dmg"
+    "pack": "electron-builder --dir",
+    "pack:mac": "electron-builder --mac dir",
+    "pack:linux": "electron-builder --linux dir --x64",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac dmg",
+    "dist:linux": "electron-builder --linux deb --x64"
   },
   "build": {
     "appId": "com.codex.wechatwritingstudio",
     "productName": "WeWrite Studio",
+    "artifactName": "wechat-writing-studio-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "release"
     },
@@ -30,6 +35,35 @@
       "target": [
         "dmg",
         "dir"
+      ]
+    },
+    "linux": {
+      "target": [
+        "deb"
+      ],
+      "category": "Office;TextEditor",
+      "maintainer": "Allen",
+      "synopsis": "AI-assisted WeChat Official Account writing studio",
+      "description": "A local AI-assisted writing desk for drafting, editing, and preparing WeChat Official Account articles.",
+      "desktop": {
+        "entry": {
+          "Name": "WeWrite Studio",
+          "Comment": "Draft, edit, and prepare WeChat Official Account articles"
+        }
+      }
+    },
+    "deb": {
+      "packageCategory": "editors",
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0"
       ]
     }
   },

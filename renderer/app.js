@@ -13,7 +13,7 @@ function createPreviewBridge() {
     openComment: false,
     fansOnlyComment: false,
     contentMarkdown:
-      '## Start with the draft\n\nThis preview runs without Electron so the layout can be checked in a browser.\n\n- Use the left sheet as the writing surface\n- Keep preview, assistant, and publishing in the right panel\n- Resize or hide the draft drawer and tool panel\n\nWhen the Mac app runs, these controls use the real local data and publishing services.',
+      '## Start with the draft\n\nThis preview runs without Electron so the layout can be checked in a browser.\n\n- Use the left sheet as the writing surface\n- Keep preview, assistant, and publishing in the right panel\n- Resize or hide the draft drawer and tool panel\n\nWhen the desktop app runs, these controls use the real local data and publishing services.',
     wechat: {
       draftMediaId: '',
       publishId: '',
@@ -76,7 +76,7 @@ function createPreviewBridge() {
     runAssistant: async ({ action }) => ({
       action,
       label: action,
-      text: 'Browser preview mode: AI calls are available in the packaged Mac app after you add an OpenAI API key.',
+      text: 'Browser preview mode: AI calls are available in the packaged desktop app after you add an OpenAI API key.',
       model: 'gpt-5.4-mini'
     }),
     testWechat: async () => ({ ok: true, tokenPreview: 'preview-token' }),

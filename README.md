@@ -1,6 +1,6 @@
 # WeWrite Studio
 
-A local Mac writing app for drafting, editing, and preparing WeChat Official Account articles with AI assistance.
+A local desktop writing app for drafting, editing, and preparing WeChat Official Account articles with AI assistance. WeWrite Studio supports macOS and Linux.
 
 ## Current Features
 
@@ -18,19 +18,64 @@ npm install
 npm start
 ```
 
-## Build the Mac App
+## Build Desktop Packages
+
+Build an unpacked app for the current platform:
 
 ```bash
 npm run pack
 ```
 
-The `.app` bundle is generated in `release/mac-arm64/WeWrite Studio.app`.
-
-To create a distributable DMG:
+Build a distributable package for the current platform:
 
 ```bash
 npm run dist
 ```
+
+### macOS
+
+The macOS `.app` bundle is generated in `release/mac-arm64/WeWrite Studio.app`:
+
+```bash
+npm run pack:mac
+```
+
+To create a distributable DMG:
+
+```bash
+npm run dist:mac
+```
+
+### Linux
+
+The Linux unpacked app is generated in `release/linux-unpacked`:
+
+```bash
+npm run pack:linux
+```
+
+To create a Linux `.deb` installer for Debian/Ubuntu-based systems:
+
+```bash
+npm run dist:linux
+```
+
+The package is written to `release/wechat-writing-studio-<version>-linux-amd64.deb`.
+
+Install the generated package:
+
+```bash
+sudo apt install ./release/wechat-writing-studio-*-linux-*.deb
+```
+
+The installed app appears in the desktop launcher as `WeWrite Studio`.
+
+## Publish a Linux Release
+
+The `Build Linux deb` GitHub Actions workflow builds the `.deb` installer on Ubuntu.
+
+- Run it manually from the Actions tab to download the `.deb` artifact.
+- Push a version tag such as `v0.1.16` to attach the `.deb` to a GitHub Release automatically.
 
 ## Configuration
 
