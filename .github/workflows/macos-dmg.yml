@@ -1,4 +1,4 @@
-name: Build Linux deb
+name: Build macOS DMG
 
 on:
   workflow_dispatch:
@@ -13,8 +13,8 @@ permissions:
   contents: write
 
 jobs:
-  linux-deb:
-    runs-on: ubuntu-latest
+  macos-dmg:
+    runs-on: macos-latest
 
     steps:
       - name: Check out repository
@@ -29,17 +29,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Linux deb
-        run: npm run dist:linux
+      - name: Build macOS DMG
+        run: npm run dist:mac
 
-      - name: Upload deb artifact
+      - name: Upload DMG artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: wechat-writing-studio-linux-deb
-          path: release/*.deb
+          name: wechat-writing-studio-macos-dmg
+          path: release/*.dmg
           if-no-files-found: error
 
-      - name: Attach deb to GitHub Release
+      - name: Attach DMGs to GitHub Release
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -52,4 +52,4 @@ jobs:
               gh release create "$tag" --title "$tag" --notes "Desktop packages for WeWrite Studio."
           fi
 
-          gh release upload "$tag" release/*.deb --clobber
+          gh release upload "$tag" release/*.dmg --clobber

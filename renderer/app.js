@@ -125,9 +125,7 @@ const elements = {
   preview: document.querySelector('#preview'),
   saveButton: document.querySelector('#saveButton'),
   deleteButton: document.querySelector('#deleteButton'),
-  brandToggleButton: document.querySelector('#brandToggleButton'),
   newArticleButton: document.querySelector('#newArticleButton'),
-  chooseCoverButton: document.querySelector('#chooseCoverButton'),
   toggleDraftsButton: document.querySelector('#toggleDraftsButton'),
   jumpAssistantButton: document.querySelector('#jumpAssistantButton'),
   toggleInspectorButton: document.querySelector('#toggleInspectorButton'),
@@ -141,11 +139,7 @@ const elements = {
   assistantAttachButton: document.querySelector('#assistantAttachButton'),
   assistantSendButton: document.querySelector('#assistantSendButton'),
   assistantOutput: document.querySelector('#assistantOutput'),
-  wechatStatus: document.querySelector('#wechatStatus'),
   wechatLog: document.querySelector('#wechatLog'),
-  draftMediaIdInput: document.querySelector('#draftMediaIdInput'),
-  publishIdInput: document.querySelector('#publishIdInput'),
-  articleIdInput: document.querySelector('#articleIdInput'),
   openaiApiKeyInput: document.querySelector('#openaiApiKeyInput'),
   wechatAppIdInput: document.querySelector('#wechatAppIdInput'),
   wechatAppSecretInput: document.querySelector('#wechatAppSecretInput'),
@@ -153,8 +147,7 @@ const elements = {
   resetLayoutButton: document.querySelector('#resetLayoutButton'),
   settingsModal: document.querySelector('#settingsModal'),
   openSettingsButton: document.querySelector('#openSettingsButton'),
-  closeSettingsButton: document.querySelector('#closeSettingsButton'),
-  openChatGptButton: document.querySelector('#openChatGptButton')
+  closeSettingsButton: document.querySelector('#closeSettingsButton')
 };
 
 function loadLayout() {
@@ -211,19 +204,6 @@ function syncRailState() {
   elements.toggleInspectorButton.classList.toggle('is-off', state.layout.inspectorHidden);
 }
 
-function setBrandIconVisible(visible) {
-  const mark = elements.brandToggleButton.querySelector('.brand-mark');
-  const icon = elements.brandToggleButton.querySelector('.rail-collapse-icon');
-  mark.style.opacity = visible ? '0' : '';
-  mark.style.transform = visible ? 'scale(0.78)' : '';
-  icon.style.opacity = visible ? '1' : '';
-  icon.style.transform = visible ? 'scale(1)' : '';
-}
-
-function syncBrandToggleVisual() {
-  setBrandIconVisible(state.layout.draftsHidden);
-}
-
 function applyLayout() {
   const root = document.documentElement;
   root.style.setProperty('--drawer-width', `${state.layout.drawerWidth}px`);
@@ -232,11 +212,11 @@ function applyLayout() {
   document.body.dataset.theme = state.layout.theme;
   document.body.classList.toggle('drafts-hidden', state.layout.draftsHidden);
   document.body.classList.toggle('inspector-hidden', state.layout.inspectorHidden);
-  elements.brandToggleButton.classList.toggle('is-drawer-hidden', state.layout.draftsHidden);
-  syncBrandToggleVisual();
 
-  elements.themeButton.title = state.layout.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
-  setButtonLabel(elements.brandToggleButton, state.layout.draftsHidden ? 'Show drafts' : 'Hide drafts');
+  const themeLabel = state.layout.theme === 'dark' ? 'Light mode' : 'Dark mode';
+  elements.themeButton.title = themeLabel;
+  elements.themeButton.setAttribute('aria-label', themeLabel);
+  elements.themeButton.dataset.tooltip = themeLabel;
   setButtonLabel(elements.toggleDraftsButton, state.layout.draftsHidden ? 'Show drafts' : 'Drafts');
   setButtonLabel(elements.toggleInspectorButton, state.layout.inspectorHidden ? 'Show panel' : 'Hide panel');
   syncRailState();
@@ -244,6 +224,45 @@ function applyLayout() {
 
 function activeArticle() {
   return state.articles.find((article) => article.id === state.activeId) || state.articles[0];
+}
+
+function setDraftControlsEnabled(enabled) {
+  [
+    elements.titleInput,
+    elements.authorInput,
+    elements.contentInput,
+    elements.showCoverInput,
+    elements.openCommentInput,
+    elements.saveButton,
+    elements.deleteButton,
+    elements.digestInput,
+    elements.sourceUrlInput,
+    elements.assistantNote,
+    elements.assistantAttachButton,
+    elements.assistantSendButton,
+    document.querySelector('#createDraftButton')
+  ].forEach((element) => {
+    if (element) {
+      element.disabled = !enabled;
+    }
+  });
+
+  document.body.classList.toggle('no-active-draft', !enabled);
+}
+
+function clearEditorFields() {
+  elements.titleInput.value = '';
+  elements.authorInput.value = '';
+  elements.digestInput.value = '';
+  elements.sourceUrlInput.value = '';
+  elements.coverPathInput.value = '';
+  elements.showCoverInput.checked = true;
+  elements.openCommentInput.checked = false;
+  elements.contentInput.value = '';
+  elements.assistantNote.value = '';
+  elements.assistantOutput.textContent = '';
+  setWechatLog('');
+  state.assistantAttachments = [];
 }
 
 function escapeHtml(value = '') {
@@ -295,6 +314,21 @@ function formatFileSize(bytes = 0) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatSavedTime(article = {}) {
+  const timestamp = article.updatedAt || article.createdAt;
+  if (!timestamp) return 'Saved time unknown';
+
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return 'Saved time unknown';
+
+  return `Saved ${date.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })}`;
 }
 
 function inlineMarkdown(value) {
@@ -361,18 +395,9 @@ function markdownToHtml(markdown = '') {
 }
 
 function getEditorArticle() {
-  const article = activeArticle() || {
-    id: `draft_${Date.now()}`,
-    title: '',
-    author: '',
-    digest: '',
-    sourceUrl: '',
-    coverPath: '',
-    showCover: true,
-    openComment: false,
-    contentMarkdown: '',
-    wechat: {}
-  };
+  const article = activeArticle();
+  if (!article) return null;
+
   return {
     ...article,
     title: elements.titleInput.value.trim(),
@@ -389,12 +414,18 @@ function getEditorArticle() {
 function renderArticleList() {
   elements.articleList.innerHTML = '';
   elements.draftCount.textContent = String(state.articles.length);
+  if (state.articles.length === 0) {
+    elements.articleList.innerHTML = '<div class="article-list-empty">No drafts yet</div>';
+    return;
+  }
+
   for (const article of state.articles) {
     const button = document.createElement('button');
     button.className = `article-item ${article.id === state.activeId ? 'active' : ''}`;
     button.innerHTML = `
       <span class="article-title">${escapeHtml(article.title || 'Untitled Article')}</span>
-      <span class="article-meta">${escapeHtml(article.digest || article.updatedAt || '')}</span>
+      <span class="article-time">${escapeHtml(formatSavedTime(article))}</span>
+      <span class="article-meta">${escapeHtml(article.digest || 'No summary yet')}</span>
     `;
     button.addEventListener('click', async () => {
       await saveCurrentArticle({ quiet: true });
@@ -435,7 +466,12 @@ async function insertImageAtCursor(filePath, { save = true } = {}) {
 
 function renderEditor() {
   const article = activeArticle();
-  if (!article) return;
+  setDraftControlsEnabled(Boolean(article));
+  if (!article) {
+    clearEditorFields();
+    renderPreview();
+    return;
+  }
 
   elements.titleInput.value = article.title || '';
   elements.authorInput.value = article.author || '';
@@ -446,14 +482,21 @@ function renderEditor() {
   elements.openCommentInput.checked = Boolean(article.openComment);
   elements.contentInput.value = article.contentMarkdown || '';
 
-  elements.draftMediaIdInput.value = article.wechat?.draftMediaId || '';
-  elements.publishIdInput.value = article.wechat?.publishId || '';
-  elements.articleIdInput.value = article.wechat?.articleId || '';
   renderPreview();
 }
 
 function renderPreview() {
   const article = getEditorArticle();
+  if (!article) {
+    elements.preview.innerHTML = `
+      <div class="empty-draft-state">
+        <h1>No draft selected</h1>
+        <p>Create a new draft to start writing.</p>
+      </div>
+    `;
+    return;
+  }
+
   const html = markdownToHtml(article.contentMarkdown);
   elements.preview.innerHTML = `
     <h1>${escapeHtml(article.title || 'Untitled Article')}</h1>
@@ -670,13 +713,6 @@ elements.themeButton.addEventListener('click', () => {
   renderSettings();
 });
 
-elements.brandToggleButton.addEventListener('pointerenter', () => setBrandIconVisible(true));
-elements.brandToggleButton.addEventListener('pointerleave', syncBrandToggleVisual);
-elements.brandToggleButton.addEventListener('mouseenter', () => setBrandIconVisible(true));
-elements.brandToggleButton.addEventListener('mouseleave', syncBrandToggleVisual);
-elements.brandToggleButton.addEventListener('focus', () => setBrandIconVisible(true));
-elements.brandToggleButton.addEventListener('blur', syncBrandToggleVisual);
-
 elements.openSettingsButton.addEventListener('click', openSettings);
 elements.closeSettingsButton.addEventListener('click', closeSettings);
 elements.openSettingsButton.onclick = openSettings;
@@ -718,7 +754,6 @@ function toggleDrafts() {
   renderSettings();
 }
 
-elements.brandToggleButton.addEventListener('click', toggleDrafts);
 elements.toggleDraftsButton.addEventListener('click', toggleDrafts);
 
 elements.jumpAssistantButton.addEventListener('click', () => {
@@ -762,15 +797,6 @@ elements.deleteButton.addEventListener('click', async () => {
   state.activeId = state.articles[0]?.id || '';
   render();
 });
-
-async function chooseDraftImage() {
-  const filePath = await bridge.chooseImage();
-  if (filePath) {
-    await insertImageAtCursor(filePath);
-  }
-}
-
-elements.chooseCoverButton.addEventListener('click', chooseDraftImage);
 
 window.addEventListener('dragover', (event) => event.preventDefault());
 window.addEventListener('drop', (event) => event.preventDefault());
@@ -844,6 +870,11 @@ assistantComposer.addEventListener('drop', async (event) => {
 
 async function runAssistantRequest() {
   const article = await saveCurrentArticle({ quiet: true });
+  if (!article) {
+    elements.assistantOutput.textContent = 'Create a draft first.';
+    return;
+  }
+
   const selection = elements.contentInput.value.slice(
     elements.contentInput.selectionStart,
     elements.contentInput.selectionEnd
@@ -888,29 +919,14 @@ document.querySelector('#saveSettingsButton').addEventListener('click', async ()
   renderSettings();
 });
 
-elements.openChatGptButton.addEventListener('click', async () => {
-  if (bridge.openChatGptLogin) {
-    await bridge.openChatGptLogin();
-  }
-});
-
-document.querySelector('#testWechatButton').addEventListener('click', async (event) => {
-  setBusy(event.currentTarget, true, 'Testing');
-  try {
-    const result = await bridge.testWechat();
-    elements.wechatStatus.textContent = `Connected: ${result.tokenPreview}`;
-    setWechatLog(result);
-  } catch (error) {
-    elements.wechatStatus.textContent = 'Connection failed';
-    setWechatLog(error.message);
-  } finally {
-    setBusy(event.currentTarget, false);
-  }
-});
-
 document.querySelector('#createDraftButton').addEventListener('click', async (event) => {
   const article = await saveCurrentArticle({ quiet: true });
-  setBusy(event.currentTarget, true, 'Sending');
+  if (!article) {
+    setWechatLog('Create a draft first.');
+    return;
+  }
+
+  setBusy(event.currentTarget, true, 'Uploading');
   try {
     const response = await bridge.createWechatDraft({
       article,
@@ -920,49 +936,10 @@ document.querySelector('#createDraftButton').addEventListener('click', async (ev
     if (index >= 0) {
       state.articles[index] = response.article;
     }
-    elements.draftMediaIdInput.value = response.result.mediaId;
-    setWechatLog(response.result);
-  } catch (error) {
-    setWechatLog(error.message);
-  } finally {
-    setBusy(event.currentTarget, false);
-  }
-});
-
-document.querySelector('#publishButton').addEventListener('click', async (event) => {
-  const article = activeArticle();
-  const mediaId = elements.draftMediaIdInput.value || article?.wechat?.draftMediaId;
-  if (!mediaId) {
-    setWechatLog('Missing draft media_id.');
-    return;
-  }
-  if (!window.confirm('Submit this draft to the WeChat publishing flow?')) return;
-  setBusy(event.currentTarget, true, 'Submitting');
-  try {
-    const result = await bridge.publishWechatDraft({ articleId: article.id, mediaId });
-    elements.publishIdInput.value = result.publishId;
-    setWechatLog(result);
-  } catch (error) {
-    setWechatLog(error.message);
-  } finally {
-    setBusy(event.currentTarget, false);
-  }
-});
-
-document.querySelector('#statusButton').addEventListener('click', async (event) => {
-  const article = activeArticle();
-  const publishId = elements.publishIdInput.value || article?.wechat?.publishId;
-  if (!publishId) {
-    setWechatLog('Missing publish_id.');
-    return;
-  }
-  setBusy(event.currentTarget, true, 'Checking');
-  try {
-    const result = await bridge.getWechatStatus({ articleId: article.id, publishId });
-    if (result.article_id) {
-      elements.articleIdInput.value = result.article_id;
-    }
-    setWechatLog(result);
+    setWechatLog({
+      message: 'Uploaded to WeChat draft box.',
+      ...response.result
+    });
   } catch (error) {
     setWechatLog(error.message);
   } finally {

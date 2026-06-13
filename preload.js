@@ -10,9 +10,5 @@ contextBridge.exposeInMainWorld('writingDesk', {
   chooseFiles: () => ipcRenderer.invoke('dialog:chooseFiles'),
   readAttachments: (filePaths) => ipcRenderer.invoke('files:readAttachments', filePaths),
   runAssistant: (payload) => ipcRenderer.invoke('assistant:run', payload),
-  openChatGptLogin: () => ipcRenderer.invoke('account:openChatGpt'),
-  testWechat: () => ipcRenderer.invoke('wechat:test'),
-  createWechatDraft: (payload) => ipcRenderer.invoke('wechat:createDraft', payload),
-  publishWechatDraft: (payload) => ipcRenderer.invoke('wechat:publish', payload),
-  getWechatStatus: (payload) => ipcRenderer.invoke('wechat:status', payload)
+  createWechatDraft: (payload) => ipcRenderer.invoke('wechat:createDraft', payload)
 });

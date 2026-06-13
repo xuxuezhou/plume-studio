@@ -7,6 +7,18 @@ let tokenCache = {
   expiresAt: 0
 };
 
+const WECHAT_ERROR_HINTS = new Map([
+  [40001, 'Check that the AppSecret is current and belongs to the same Official Account AppID. If it was reset in the admin console, save the new secret here.'],
+  [40013, 'Check the Official Account AppID. It should come from Settings and Development > Basic Configuration.'],
+  [40014, 'The access token is invalid. Retry the action; the app will request a fresh token.'],
+  [40007, 'The media_id is invalid or expired. Recreate the WeChat draft before publishing.'],
+  [40125, 'The AppSecret is invalid. Regenerate it in the WeChat Official Account admin console and save it again.'],
+  [40164, 'This machine or server IP is not in the WeChat API allowlist. Add the current egress IP in the Official Account admin console.'],
+  [45009, 'The WeChat API daily quota has been reached. Try again after the quota resets.'],
+  [48001, 'This Official Account does not have permission for the requested API. Confirm the account type and enabled developer permissions.'],
+  [61003, 'Draft box APIs are unavailable for this account or permission set. Confirm the Official Account type and API permissions.']
+]);
+
 function assertCredentials(settings) {
   if (!settings.wechatAppId || !settings.wechatAppSecret) {
     throw new Error('Missing WeChat Official Account AppID or AppSecret. Add them in Settings first.');
@@ -23,7 +35,9 @@ async function readWechatJson(response) {
     throw new Error(`WeChat API request failed: HTTP ${response.status}`);
   }
   if (payload.errcode && payload.errcode !== 0) {
-    throw new Error(`${payload.errmsg || 'WeChat API returned an error'} (errcode: ${payload.errcode})`);
+    const hint = WECHAT_ERROR_HINTS.get(payload.errcode);
+    const message = `${payload.errmsg || 'WeChat API returned an error'} (errcode: ${payload.errcode})`;
+    throw new Error(hint ? `${message}\n\nSuggested fix: ${hint}` : message);
   }
   return payload;
 }
@@ -138,63 +152,7 @@ async function createDraft(settings, article, htmlContent) {
   };
 }
 
-async function submitPublish(settings, mediaId) {
-  if (!mediaId) {
-    throw new Error('Missing draft media_id. Send the article to the draft box first.');
-  }
-
-  const accessToken = await getAccessToken(settings);
-  const url = new URL('https://api.weixin.qq.com/cgi-bin/freepublish/submit');
-  url.searchParams.set('access_token', accessToken);
-
-  const payload = await readWechatJson(
-    await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8'
-      },
-      body: JSON.stringify({ media_id: mediaId })
-    })
-  );
-
-  return {
-    publishId: String(payload.publish_id || ''),
-    raw: payload
-  };
-}
-
-async function getPublishStatus(settings, publishId) {
-  if (!publishId) {
-    throw new Error('Missing publish_id.');
-  }
-
-  const accessToken = await getAccessToken(settings);
-  const url = new URL('https://api.weixin.qq.com/cgi-bin/freepublish/get');
-  url.searchParams.set('access_token', accessToken);
-
-  return readWechatJson(
-    await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8'
-      },
-      body: JSON.stringify({ publish_id: publishId })
-    })
-  );
-}
-
-async function testConnection(settings) {
-  const token = await getAccessToken(settings, { forceRefresh: true });
-  return {
-    ok: true,
-    tokenPreview: `${token.slice(0, 8)}...${token.slice(-6)}`
-  };
-}
-
 module.exports = {
   createDraft,
-  getAccessToken,
-  getPublishStatus,
-  submitPublish,
-  testConnection
+  getAccessToken
 };

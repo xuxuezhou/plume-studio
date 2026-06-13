@@ -1,8 +1,8 @@
 const path = require('node:path');
 const fs = require('node:fs');
-const { app, BrowserWindow, dialog, ipcMain, safeStorage, shell } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, safeStorage } = require('electron');
 const { DEFAULT_MODEL, runWritingAssistant } = require('./services/openaiClient');
-const { createDraft, getPublishStatus, submitPublish, testConnection } = require('./services/wechatClient');
+const { createDraft } = require('./services/wechatClient');
 
 const DATA_VERSION = 1;
 const MAX_ATTACHMENT_BYTES = 120_000;
@@ -101,11 +101,6 @@ function migrateData(data) {
     },
     articles: Array.isArray(data.articles) ? data.articles : []
   };
-
-  if (next.articles.length === 0) {
-    next.articles = [defaultArticle()];
-    changed = true;
-  }
 
   next.articles = next.articles.map((article) => {
     const looksLikeOldStarter =
@@ -313,6 +308,7 @@ function createWindow() {
     minWidth: 1040,
     minHeight: 720,
     title: 'WeWrite Studio',
+    autoHideMenuBar: true,
     backgroundColor: '#f6f3ee',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -410,6 +406,7 @@ function injectRendererScript(js) {
 }
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
   ensureDataFile();
   createWindow();
 
@@ -482,11 +479,6 @@ ipcMain.handle('settings:save', (_event, payload) => {
   return getPublicSettings();
 });
 
-ipcMain.handle('account:openChatGpt', async () => {
-  await shell.openExternal('https://chatgpt.com/auth/login');
-  return true;
-});
-
 ipcMain.handle('dialog:chooseImage', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     title: 'Choose Image',
@@ -537,8 +529,6 @@ ipcMain.handle('assistant:run', async (_event, payload) => {
   });
 });
 
-ipcMain.handle('wechat:test', async () => testConnection(getPrivateSettings()));
-
 ipcMain.handle('wechat:createDraft', async (_event, payload) => {
   const data = readData();
   const article = data.articles.find((item) => item.id === payload.article.id) || payload.article;
@@ -558,38 +548,4 @@ ipcMain.handle('wechat:createDraft', async (_event, payload) => {
     }
   });
   return { result, article: saved };
-});
-
-ipcMain.handle('wechat:publish', async (_event, payload) => {
-  const result = await submitPublish(getPrivateSettings(), payload.mediaId);
-  const data = readData();
-  const article = data.articles.find((item) => item.id === payload.articleId);
-  if (article) {
-    upsertArticle({
-      ...article,
-      wechat: {
-        ...(article.wechat || {}),
-        publishId: result.publishId,
-        lastStatus: 'Publish submitted'
-      }
-    });
-  }
-  return result;
-});
-
-ipcMain.handle('wechat:status', async (_event, payload) => {
-  const result = await getPublishStatus(getPrivateSettings(), payload.publishId);
-  const data = readData();
-  const article = data.articles.find((item) => item.id === payload.articleId);
-  if (article) {
-    upsertArticle({
-      ...article,
-      wechat: {
-        ...(article.wechat || {}),
-        articleId: result.article_id || article.wechat?.articleId || '',
-        lastStatus: JSON.stringify(result)
-      }
-    });
-  }
-  return result;
 });

@@ -1,6 +1,6 @@
 {
   "name": "wechat-writing-studio",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "description": "A local AI-assisted writing desk for WeChat Official Account publishing.",
   "author": "Allen",
   "main": "main.js",
@@ -9,10 +9,10 @@
     "start": "electron .",
     "dev": "electron .",
     "pack": "electron-builder --dir",
-    "pack:mac": "electron-builder --mac dir",
+    "pack:mac": "electron-builder --mac dir --arm64 --x64",
     "pack:linux": "electron-builder --linux dir --x64",
     "dist": "electron-builder",
-    "dist:mac": "electron-builder --mac dmg",
+    "dist:mac": "electron-builder --mac dmg --arm64 --x64",
     "dist:linux": "electron-builder --linux deb --x64"
   },
   "build": {

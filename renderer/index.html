@@ -9,10 +9,9 @@
   <body>
     <div class="app-shell">
       <aside class="sidebar">
-        <button class="rail-brand" id="brandToggleButton" title="Hide drafts" data-tooltip="Hide drafts" aria-label="Hide drafts">
+        <div class="rail-brand" title="WeWrite Studio" aria-label="WeWrite Studio">
           <span class="brand-mark" aria-hidden="true">W</span>
-          <span class="rail-collapse-icon" aria-hidden="true"></span>
-        </button>
+        </div>
         <button class="rail-button" id="newArticleButton" title="New draft" data-tooltip="New draft" aria-label="New draft">
           <svg class="rail-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 5v14M5 12h14" />
@@ -37,6 +36,22 @@
           </svg>
         </button>
         <div class="rail-spacer"></div>
+        <button class="rail-button theme-toggle" id="themeButton" title="Dark mode" data-tooltip="Dark mode" aria-label="Dark mode">
+          <svg class="rail-icon theme-icon theme-dark-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3a7 7 0 1 0 8.2 8.2A5.5 5.5 0 0 1 12 3Z" />
+            <path d="M19 3v4M21 5h-4" />
+          </svg>
+          <svg class="rail-icon theme-icon theme-light-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4 12H2M22 12h-2M4.93 4.93 6.34 6.34M17.66 17.66l1.41 1.41M19.07 4.93l-1.41 1.41M6.34 17.66l-1.41 1.41" />
+          </svg>
+        </button>
+        <button class="rail-button" id="openSettingsButton" title="Settings" data-tooltip="Settings" aria-label="Settings">
+          <svg class="rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
+            <path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.04.04a2.1 2.1 0 0 1-2.97 2.97l-.04-.04a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.09 1.65V21a2.1 2.1 0 0 1-4.2 0v-.06a1.8 1.8 0 0 0-1.09-1.65 1.8 1.8 0 0 0-1.98.36l-.04.04a2.1 2.1 0 0 1-2.97-2.97l.04-.04A1.8 1.8 0 0 0 4.6 15a1.8 1.8 0 0 0-1.65-1.09H3a2.1 2.1 0 0 1 0-4.2h.06A1.8 1.8 0 0 0 4.7 8.62a1.8 1.8 0 0 0-.36-1.98l-.04-.04a2.1 2.1 0 0 1 2.97-2.97l.04.04a1.8 1.8 0 0 0 1.98.36A1.8 1.8 0 0 0 10.38 2.4V2.3a2.1 2.1 0 0 1 4.2 0v.1a1.8 1.8 0 0 0 1.09 1.65 1.8 1.8 0 0 0 1.98-.36l.04-.04a2.1 2.1 0 0 1 2.97 2.97l-.04.04a1.8 1.8 0 0 0-.36 1.98 1.8 1.8 0 0 0 1.65 1.09H22a2.1 2.1 0 0 1 0 4.2h-.1A1.8 1.8 0 0 0 19.4 15Z" />
+          </svg>
+        </button>
         <div class="rail-avatar" title="Local account" data-tooltip="Local account" aria-label="Local account">A</div>
       </aside>
 
@@ -58,19 +73,9 @@
         <header class="paperbar">
           <nav class="paper-tabs" aria-label="Document tools">
             <button class="paper-tab active">Draft</button>
-            <button class="paper-tab" id="chooseCoverButton">Image</button>
             <button class="paper-tab" id="saveButton">Save</button>
             <button class="paper-tab danger" id="deleteButton">Delete</button>
           </nav>
-          <div class="paper-actions">
-            <label><input id="showCoverInput" type="checkbox" /> Cover</label>
-            <label><input id="openCommentInput" type="checkbox" /> Comments</label>
-            <button class="theme-toggle" id="themeButton" title="Toggle theme" aria-label="Toggle theme">
-              <span class="theme-sun" aria-hidden="true"></span>
-              <span class="theme-moon" aria-hidden="true"></span>
-            </button>
-            <button class="settings-trigger" id="openSettingsButton">Settings</button>
-          </div>
         </header>
 
         <section class="editor-stage">
@@ -155,7 +160,7 @@
             <div class="assistant-attachments" id="assistantAttachments" hidden></div>
             <textarea id="assistantNote" class="assistant-input" placeholder="Ask anything about this draft or highlighted text..."></textarea>
             <div class="assistant-composer-bar">
-              <button class="assistant-import-button" id="assistantAttachButton" type="button">Import Doc</button>
+              <button class="assistant-import-button" id="assistantAttachButton" type="button" title="Import document" aria-label="Import document">+</button>
               <select id="assistantModelSelect" class="assistant-model-select" title="Model">
                 <option value="gpt-5.4-mini">gpt-5.4-mini</option>
                 <option value="gpt-5.4">gpt-5.4</option>
@@ -172,25 +177,22 @@
           </div>
         </section>
 
-        <section class="panel" id="publishPanel">
-          <div class="status-strip" id="wechatStatus">Not connected</div>
-          <button id="testWechatButton">Test Connection</button>
-          <button id="createDraftButton">Send to Draft Box</button>
-          <button id="publishButton">Submit Publish</button>
-          <button id="statusButton">Check Status</button>
-          <div class="publish-fields">
-            <label>WeChat summary</label>
-            <textarea id="digestInput" rows="3" placeholder="Short summary shown in WeChat article lists"></textarea>
-            <label>Source URL</label>
-            <input id="sourceUrlInput" placeholder="Optional original link" />
-            <label>draft media_id</label>
-            <input id="draftMediaIdInput" readonly />
-            <label>publish_id</label>
-            <input id="publishIdInput" readonly />
-            <label>article_id</label>
-            <input id="articleIdInput" readonly />
+        <section class="panel publish-panel" id="publishPanel">
+          <div class="publish-stack">
+            <div class="publish-fields">
+              <label>Summary</label>
+              <textarea id="digestInput" rows="3" placeholder="Short summary shown in WeChat article lists"></textarea>
+              <label>Source URL <span class="optional-label">(optional)</span></label>
+              <input id="sourceUrlInput" placeholder="Original article link" />
+              <div class="publish-options">
+                <label title="Show the cover image in the WeChat article body"><input id="showCoverInput" type="checkbox" /> Cover</label>
+                <label title="Open comments for the uploaded WeChat draft"><input id="openCommentInput" type="checkbox" /> Comments</label>
+              </div>
+            </div>
+
+            <pre id="wechatLog"></pre>
+            <button class="publish-primary" id="createDraftButton">Upload</button>
           </div>
-          <pre id="wechatLog"></pre>
         </section>
 
       </aside>
@@ -209,15 +211,9 @@
         <div class="settings-body">
           <section class="settings-section">
             <h3>OpenAI API</h3>
-            <p>The writing assistant uses the OpenAI API. ChatGPT web sign-in does not authorize API calls.</p>
+            <p>The writing assistant uses the OpenAI API key saved on this device.</p>
             <label>OpenAI API Key</label>
             <input id="openaiApiKeyInput" type="password" placeholder="Leave blank to keep current key" />
-          </section>
-
-          <section class="settings-section">
-            <h3>ChatGPT Account</h3>
-            <p>You can open ChatGPT and sign in with Google in your browser, but this app still needs an API key for local agent calls.</p>
-            <button id="openChatGptButton">Open ChatGPT Sign-in</button>
           </section>
 
           <section class="settings-section">
