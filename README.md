@@ -2,7 +2,7 @@
 
 WeWrite Studio is a local desktop writing app for drafting, editing, and preparing WeChat Official Account articles with OpenAI API assistance.
 
-Current app version: `0.1.17`.
+Current app version: `0.1.18`.
 
 ## Features
 
@@ -62,8 +62,8 @@ npm run dist:mac
 The DMG artifacts use the shared package version, for example:
 
 ```text
-release/wechat-writing-studio-0.1.17-mac-arm64.dmg
-release/wechat-writing-studio-0.1.17-mac-x64.dmg
+release/wechat-writing-studio-0.1.18-mac-arm64.dmg
+release/wechat-writing-studio-0.1.18-mac-x64.dmg
 ```
 
 ### Linux
@@ -95,9 +95,9 @@ The installed app appears in the desktop launcher as `WeWrite Studio`.
 `package.json` is the single source of truth for the desktop app version. Keep Linux and macOS artifacts on the same version by bumping `package.json` and `package-lock.json` together, then tag the same version:
 
 ```bash
-npm version 0.1.17 --no-git-tag-version
-git commit -am "Prepare 0.1.17"
-git tag v0.1.17
+npm version 0.1.18 --no-git-tag-version
+git commit -am "Prepare 0.1.18"
+git tag v0.1.18
 git push origin main --tags
 ```
 
@@ -105,7 +105,7 @@ GitHub Actions workflows:
 
 - `Build Linux deb` builds and uploads the Debian/Ubuntu installer.
 - `Build macOS DMG` builds and uploads Apple Silicon and Intel DMG installers.
-- Pushing a tag like `v0.1.17` attaches matching Linux and macOS packages to the GitHub Release.
+- Pushing a tag like `v0.1.18` attaches matching Linux and macOS packages to the GitHub Release.
 
 ## Configuration
 
