@@ -7,7 +7,7 @@ const openai = require('./services/openaiClient');
 const wechat = require('./services/wechatClient');
 
 const app = express();
-const PORT = Number(process.env.PORT || 3000);
+const PORT = Number(process.env.PORT || 5757);
 const HOST = process.env.HOST || '127.0.0.1';
 
 app.use(express.json({ limit: '4mb' }));
@@ -220,6 +220,6 @@ app.get('/api/wechat/status/:articleId', async (req, res) => {
 });
 
 app.listen(PORT, HOST, () => {
-  console.log(`WeWrite Studio 运行在 http://${HOST}:${PORT}`);
+  console.log(`Plume Studio 运行在 http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
   console.log(`数据目录：${store.dataDir}`);
 });

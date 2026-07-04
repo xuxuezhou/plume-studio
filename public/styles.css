@@ -180,9 +180,14 @@ body.drafts-hidden.inspector-hidden .app-shell {
   width: 42px;
   height: 42px;
   border-radius: 14px;
-  background: var(--accent);
-  color: white;
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #40112a));
+  color: #ffd9e5;
   box-shadow: var(--shadow);
+}
+
+.brand-mark svg {
+  width: 30px;
+  height: 30px;
 }
 
 .rail-button {
