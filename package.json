@@ -1,6 +1,6 @@
 {
   "name": "wechat-writing-studio",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Plume Studio — a web-based AI-assisted writing desk for WeChat Official Account publishing.",
   "author": "Allen",
   "main": "server.js",
@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "check": "node --check server.js && node --check lib/store.js && node --check lib/markdown.js && node --check services/openaiClient.js && node --check services/wechatClient.js && node --check public/app.js",
+    "check": "node --check server.js && node --check lib/store.js && node --check public/shared/markdown.js && node --check services/openaiClient.js && node --check services/wechatClient.js && node --check public/app.js && node --check public/backend.js",
     "service:install": "bash scripts/install-service.sh",
     "service:uninstall": "bash scripts/uninstall-service.sh"
   },

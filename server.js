@@ -2,7 +2,7 @@ const path = require('node:path');
 const express = require('express');
 
 const store = require('./lib/store');
-const markdown = require('./lib/markdown');
+const markdown = require('./public/shared/markdown');
 const openai = require('./services/openaiClient');
 const wechat = require('./services/wechatClient');
 
@@ -13,9 +13,6 @@ const HOST = process.env.HOST || '127.0.0.1';
 app.use(express.json({ limit: '4mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(store.uploadsDir));
-app.get('/shared/markdown.js', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'lib', 'markdown.js'));
-});
 
 function handleError(res, error) {
   res.status(400).json({ error: error.message || String(error) });
@@ -63,11 +60,11 @@ app.post(
   (req, res) => {
     try {
       if (!req.body || !req.body.length) {
-        throw new Error('没有收到文件内容。');
+        throw new Error('No file content received.');
       }
       const name = String(req.query.filename || 'image.jpg');
       if (!/\.(jpe?g|png|webp|gif)$/i.test(name)) {
-        throw new Error('仅支持 jpg / png / webp / gif 图片。');
+        throw new Error('Only jpg / png / webp / gif images are supported.');
       }
       res.json({ url: store.saveUpload(name, req.body) });
     } catch (error) {
@@ -143,7 +140,7 @@ app.post('/api/wechat/draft', async (req, res) => {
   try {
     const article = store.getArticle(req.body?.articleId);
     if (!article) {
-      throw new Error('文章不存在，请先保存。');
+      throw new Error('Article not found. Save it first.');
     }
 
     const htmlContent = markdown.toWechatHtml(article.contentMarkdown || '');
@@ -162,7 +159,7 @@ app.post('/api/wechat/draft', async (req, res) => {
         publishId: '',
         articleId: '',
         articleUrl: '',
-        lastStatus: '已上传到草稿箱'
+        lastStatus: 'Uploaded to draft box'
       }
     });
 
@@ -176,7 +173,7 @@ app.post('/api/wechat/publish', async (req, res) => {
   try {
     const article = store.getArticle(req.body?.articleId);
     if (!article) {
-      throw new Error('文章不存在，请先保存。');
+      throw new Error('Article not found. Save it first.');
     }
 
     const result = await wechat.publishDraft(store.getPrivateSettings(), article.wechat?.draftMediaId);
@@ -185,7 +182,7 @@ app.post('/api/wechat/publish', async (req, res) => {
       wechat: {
         ...article.wechat,
         publishId: result.publishId,
-        lastStatus: '已提交发布，审核中'
+        lastStatus: 'Submitted for publishing, under review'
       }
     });
 
@@ -199,7 +196,7 @@ app.get('/api/wechat/status/:articleId', async (req, res) => {
   try {
     const article = store.getArticle(req.params.articleId);
     if (!article) {
-      throw new Error('文章不存在。');
+      throw new Error('Article not found.');
     }
 
     const status = await wechat.getPublishStatus(store.getPrivateSettings(), article.wechat?.publishId);
@@ -220,6 +217,6 @@ app.get('/api/wechat/status/:articleId', async (req, res) => {
 });
 
 app.listen(PORT, HOST, () => {
-  console.log(`Plume Studio 运行在 http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
-  console.log(`数据目录：${store.dataDir}`);
+  console.log(`Plume Studio running at http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
+  console.log(`Data directory: ${store.dataDir}`);
 });

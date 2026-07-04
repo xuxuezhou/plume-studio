@@ -1,13 +1,13 @@
-/* global WeWriteMarkdown */
+/* global WeWriteMarkdown, createBackend */
 const { escapeHtml, markdownToHtml } = WeWriteMarkdown;
 
 const MODEL_OPTIONS = ['gpt-5.4-mini', 'gpt-5.4', 'gpt-5.5'];
 const ACTION_PROMPTS = {
-  outline: '请为这篇文章生成结构大纲。',
-  titles: '请生成一批公众号标题选项。',
-  rewrite: '请改写当前草稿（若我选中了文本则只改写选中部分）。',
-  summary: '请为这篇文章写一段公众号摘要。',
-  review: '请像资深编辑一样审阅这篇草稿。'
+  outline: 'Draft a structural outline for this article.',
+  titles: 'Generate a batch of title options.',
+  rewrite: 'Rewrite the current draft (or just my selection if I have one).',
+  summary: 'Write a digest for this article.',
+  review: 'Review this draft like a senior editor.'
 };
 const MAX_ATTACHMENT_BYTES = 120_000;
 
@@ -18,6 +18,8 @@ const DEFAULT_LAYOUT = {
   draftsHidden: false,
   inspectorHidden: false
 };
+
+let backend = null;
 
 const state = {
   articles: [],
@@ -42,9 +44,9 @@ const elements = {};
   'draftResizeHandle', 'inspectorResizeHandle',
   'assistantChat', 'assistantEmpty', 'assistantAttachments', 'assistantNote', 'assistantModelSelect',
   'assistantAttachButton', 'assistantSendButton', 'assistantFileInput', 'assistantActions', 'clearChatButton',
-  'wechatLog', 'publishStatus', 'createDraftButton', 'publishButton', 'statusButton',
-  'openaiApiKeyInput', 'openaiBaseUrlInput', 'openaiModelInput',
-  'wechatAppIdInput', 'wechatAppSecretInput',
+  'wechatLog', 'publishStatus', 'createDraftButton', 'publishButton', 'statusButton', 'publishCloudNote',
+  'openaiApiKeyInput', 'openaiBaseUrlInput', 'openaiModelInput', 'aiSettingsNote',
+  'wechatAppIdInput', 'wechatAppSecretInput', 'wechatSettingsSection',
   'testOpenaiButton', 'testWechatButton',
   'settingsState', 'resetLayoutButton', 'settingsModal', 'openSettingsButton', 'closeSettingsButton',
   'saveSettingsButton'
@@ -52,32 +54,7 @@ const elements = {};
   elements[id] = document.querySelector(`#${id}`);
 });
 
-// ---------- API ----------
-
-async function api(path, options = {}) {
-  const response = await fetch(path, {
-    headers: options.body instanceof Blob ? {} : { 'Content-Type': 'application/json' },
-    ...options
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.error || `请求失败：HTTP ${response.status}`);
-  }
-  return payload;
-}
-
-async function uploadImage(file) {
-  const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name || 'image.jpg')}`, {
-    method: 'POST',
-    headers: { 'Content-Type': file.type || 'application/octet-stream' },
-    body: file
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.error || '图片上传失败。');
-  }
-  return payload.url;
-}
+const isBrowserMode = () => backend?.mode === 'browser';
 
 // ---------- layout ----------
 
@@ -87,7 +64,7 @@ function clamp(value, min, max) {
 
 function loadLayout() {
   try {
-    const stored = JSON.parse(localStorage.getItem('wewrite-layout') || '{}');
+    const stored = JSON.parse(localStorage.getItem('plume-layout') || localStorage.getItem('wewrite-layout') || '{}');
     const drawerWidth = clamp(stored.drawerWidth || DEFAULT_LAYOUT.drawerWidth, 190, 360);
     const maxInspectorWidth = clamp(window.innerWidth - 76 - drawerWidth - 12 - 460, 360, 680);
     return {
@@ -102,7 +79,7 @@ function loadLayout() {
 }
 
 function saveLayout() {
-  localStorage.setItem('wewrite-layout', JSON.stringify(state.layout));
+  localStorage.setItem('plume-layout', JSON.stringify(state.layout));
 }
 
 function setButtonLabel(button, label) {
@@ -133,9 +110,9 @@ function applyLayout() {
     !state.layout.inspectorHidden && window.innerWidth <= 880
   );
 
-  setButtonLabel(elements.themeButton, state.layout.theme === 'dark' ? '浅色模式' : '深色模式');
-  setButtonLabel(elements.toggleDraftsButton, state.layout.draftsHidden ? '显示草稿' : '草稿列表');
-  setButtonLabel(elements.toggleInspectorButton, state.layout.inspectorHidden ? '展开面板' : '收起面板');
+  setButtonLabel(elements.themeButton, state.layout.theme === 'dark' ? 'Light mode' : 'Dark mode');
+  setButtonLabel(elements.toggleDraftsButton, state.layout.draftsHidden ? 'Show drafts' : 'Drafts');
+  setButtonLabel(elements.toggleInspectorButton, state.layout.inspectorHidden ? 'Show panel' : 'Hide panel');
   syncRailState();
 }
 
@@ -166,7 +143,7 @@ function formatSavedTime(article = {}) {
   if (!timestamp) return '';
   const date = new Date(timestamp);
   if (Number.isNaN(date.getTime())) return '';
-  return `保存于 ${date.toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
+  return `Saved ${date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
 }
 
 function renderArticleList() {
@@ -181,22 +158,22 @@ function renderArticleList() {
   elements.articleList.innerHTML = '';
 
   if (filtered.length === 0) {
-    elements.articleList.innerHTML = `<div class="article-list-empty">${term ? '没有匹配的草稿' : '还没有草稿'}</div>`;
+    elements.articleList.innerHTML = `<div class="article-list-empty">${term ? 'No matching drafts' : 'No drafts yet'}</div>`;
     return;
   }
 
   for (const article of filtered) {
     const button = document.createElement('button');
     button.className = `article-item ${article.id === state.activeId ? 'active' : ''}`;
-    const published = article.wechat?.articleUrl
-      ? '<span class="article-badge published">已发布</span>'
+    const badge = article.wechat?.articleUrl
+      ? '<span class="article-badge published">Published</span>'
       : article.wechat?.draftMediaId
-        ? '<span class="article-badge">已上传草稿箱</span>'
+        ? '<span class="article-badge">In draft box</span>'
         : '';
     button.innerHTML = `
-      <span class="article-title">${escapeHtml(article.title || '未命名文章')}</span>
-      <span class="article-time">${escapeHtml(formatSavedTime(article))}${published}</span>
-      <span class="article-meta">${escapeHtml(article.digest || article.contentMarkdown?.slice(0, 60) || '暂无摘要')}</span>
+      <span class="article-title">${escapeHtml(article.title || 'Untitled')}</span>
+      <span class="article-time">${escapeHtml(formatSavedTime(article))}${badge}</span>
+      <span class="article-meta">${escapeHtml(article.digest || article.contentMarkdown?.slice(0, 60) || 'No digest yet')}</span>
     `;
     button.addEventListener('click', async () => {
       if (article.id === state.activeId) return;
@@ -211,16 +188,17 @@ function renderArticleList() {
 function renderEditor() {
   const article = activeArticle();
   const enabled = Boolean(article);
+  const browserMode = isBrowserMode();
   [
     elements.titleInput, elements.authorInput, elements.contentInput,
     elements.digestInput, elements.sourceUrlInput,
     elements.showCoverInput, elements.openCommentInput, elements.fansOnlyCommentInput,
     elements.saveButton, elements.deleteButton, elements.insertImageButton,
-    elements.assistantNote, elements.assistantSendButton, elements.assistantAttachButton,
-    elements.createDraftButton, elements.publishButton, elements.statusButton
+    elements.assistantNote, elements.assistantSendButton, elements.assistantAttachButton
   ].forEach((element) => {
     element.disabled = !enabled;
   });
+  elements.createDraftButton.disabled = !enabled || browserMode;
 
   if (!article) {
     elements.titleInput.value = '';
@@ -255,8 +233,8 @@ function renderPreview() {
   if (!article) {
     elements.preview.innerHTML = `
       <div class="empty-draft-state">
-        <h1>没有选中的草稿</h1>
-        <p>点击左上角 + 新建一篇草稿开始写作。</p>
+        <h1>No draft selected</h1>
+        <p>Click + in the top-left corner to start a new draft.</p>
       </div>
     `;
     elements.wordCount.textContent = '';
@@ -264,14 +242,14 @@ function renderPreview() {
   }
 
   elements.preview.innerHTML = `
-    <h1>${escapeHtml(article.title || '未命名文章')}</h1>
+    <h1>${escapeHtml(article.title || 'Untitled')}</h1>
     ${article.author ? `<p class="preview-byline">${escapeHtml(article.author)}</p>` : ''}
     ${article.digest ? `<blockquote>${escapeHtml(article.digest)}</blockquote>` : ''}
     ${markdownToHtml(article.contentMarkdown)}
   `;
 
   const characters = (article.contentMarkdown || '').replace(/\s/g, '').length;
-  elements.wordCount.textContent = characters ? `${characters} 字` : '';
+  elements.wordCount.textContent = characters ? `${characters} chars` : '';
 }
 
 function renderCover() {
@@ -284,17 +262,30 @@ function renderCover() {
 
 function renderPublishStatus() {
   const article = activeArticle();
+  const browserMode = isBrowserMode();
   const wechatState = article?.wechat || {};
   const rows = [];
-  if (wechatState.lastStatus) rows.push(`<span class="status-row"><b>状态</b>${escapeHtml(wechatState.lastStatus)}</span>`);
-  if (wechatState.draftMediaId) rows.push(`<span class="status-row"><b>草稿 ID</b><code>${escapeHtml(wechatState.draftMediaId)}</code></span>`);
-  if (wechatState.publishId) rows.push(`<span class="status-row"><b>发布 ID</b><code>${escapeHtml(wechatState.publishId)}</code></span>`);
+  if (wechatState.lastStatus) rows.push(`<span class="status-row"><b>Status</b>${escapeHtml(wechatState.lastStatus)}</span>`);
+  if (wechatState.draftMediaId) rows.push(`<span class="status-row"><b>Draft ID</b><code>${escapeHtml(wechatState.draftMediaId)}</code></span>`);
+  if (wechatState.publishId) rows.push(`<span class="status-row"><b>Publish ID</b><code>${escapeHtml(wechatState.publishId)}</code></span>`);
   if (wechatState.articleUrl) {
-    rows.push(`<span class="status-row"><b>文章链接</b><a href="${escapeHtml(wechatState.articleUrl)}" target="_blank" rel="noopener">在微信中查看</a></span>`);
+    rows.push(`<span class="status-row"><b>Article</b><a href="${escapeHtml(wechatState.articleUrl)}" target="_blank" rel="noopener">View on WeChat</a></span>`);
   }
   elements.publishStatus.innerHTML = rows.join('');
-  elements.publishButton.disabled = !article || !wechatState.draftMediaId;
-  elements.statusButton.disabled = !article || !wechatState.publishId;
+  elements.publishButton.disabled = browserMode || !article || !wechatState.draftMediaId;
+  elements.statusButton.disabled = browserMode || !article || !wechatState.publishId;
+}
+
+function renderMode() {
+  const browserMode = isBrowserMode();
+  document.body.classList.toggle('browser-mode', browserMode);
+  elements.publishCloudNote.hidden = !browserMode;
+  elements.wechatSettingsSection.hidden = browserMode;
+  if (browserMode) {
+    elements.aiSettingsNote.textContent =
+      'The assistant calls an OpenAI-compatible API directly from this browser with your own key. ' +
+      'The key and all drafts are stored only in this browser (localStorage) — nothing is sent to any Plume server.';
+  }
 }
 
 function renderSettings() {
@@ -312,13 +303,14 @@ function renderSettings() {
   elements.openaiModelInput.value = state.settings.openaiModel || '';
   elements.wechatAppIdInput.value = state.settings.wechatAppId || '';
   elements.settingsState.textContent = [
-    `OpenAI Key：${state.settings.hasOpenaiApiKey ? '已保存' : '未保存'}`,
-    `公众号 AppSecret：${state.settings.hasWechatAppSecret ? '已保存' : '未保存'}`
-  ].join('\n');
+    `OpenAI key: ${state.settings.hasOpenaiApiKey ? 'saved' : 'not saved'}`,
+    isBrowserMode() ? '' : `WeChat AppSecret: ${state.settings.hasWechatAppSecret ? 'saved' : 'not saved'}`
+  ].filter(Boolean).join('\n');
 }
 
 function render() {
   applyLayout();
+  renderMode();
   renderArticleList();
   renderEditor();
   renderAssistantAttachments();
@@ -331,7 +323,7 @@ let saveTimer = null;
 
 function markDirty() {
   state.dirty = true;
-  elements.saveState.textContent = '有未保存更改';
+  elements.saveState.textContent = 'Unsaved changes';
   window.clearTimeout(saveTimer);
   saveTimer = window.setTimeout(() => saveCurrentArticle({ quiet: true }), 900);
 }
@@ -343,36 +335,30 @@ async function saveCurrentArticle({ quiet = false } = {}) {
   state.saving = true;
   window.clearTimeout(saveTimer);
   try {
-    const saved = await api(`/api/articles/${article.id}`, {
-      method: 'PUT',
-      body: JSON.stringify(article)
-    });
+    const saved = await backend.updateArticle(article.id, article);
     const index = state.articles.findIndex((item) => item.id === saved.id);
     if (index >= 0) state.articles[index] = saved;
     state.dirty = false;
-    elements.saveState.textContent = `已保存 ${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`;
+    elements.saveState.textContent = `Saved ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
     if (!quiet) {
-      elements.saveButton.textContent = '已保存';
+      elements.saveButton.textContent = 'Saved';
       window.setTimeout(() => {
-        elements.saveButton.textContent = '保存';
+        elements.saveButton.textContent = 'Save';
       }, 900);
     }
     renderArticleList();
     return saved;
   } catch (error) {
-    elements.saveState.textContent = `保存失败：${error.message}`;
+    elements.saveState.textContent = `Save failed: ${error.message}`;
     return article;
   } finally {
     state.saving = false;
   }
 }
 
-// Persist non-editor fields (chat, cover, wechat state) without clobbering edits.
-async function persistArticle(article) {
-  const saved = await api(`/api/articles/${article.id}`, {
-    method: 'PUT',
-    body: JSON.stringify(article)
-  });
+// Persist specific fields (chat, cover) without clobbering in-progress edits.
+async function persistFields(articleId, payload) {
+  const saved = await backend.updateArticle(articleId, payload);
   const index = state.articles.findIndex((item) => item.id === saved.id);
   if (index >= 0) state.articles[index] = saved;
   return saved;
@@ -398,8 +384,8 @@ function insertAtCursor(text) {
 }
 
 async function insertImageFile(file) {
-  const url = await uploadImage(file);
-  const alt = (file.name || '图片').replace(/\.[^.]+$/, '');
+  const url = await backend.uploadImage(file);
+  const alt = (file.name || 'image').replace(/\.[^.]+$/, '');
   insertAtCursor(`![${alt}](${url})`);
 
   const article = activeArticle();
@@ -443,17 +429,17 @@ function buildMessageNode(message) {
     actions.className = 'chat-actions';
 
     const copyButton = document.createElement('button');
-    copyButton.textContent = '复制';
+    copyButton.textContent = 'Copy';
     copyButton.addEventListener('click', async () => {
       await navigator.clipboard.writeText(message.content);
-      copyButton.textContent = '已复制';
+      copyButton.textContent = 'Copied';
       window.setTimeout(() => {
-        copyButton.textContent = '复制';
+        copyButton.textContent = 'Copy';
       }, 1200);
     });
 
     const insertButton = document.createElement('button');
-    insertButton.textContent = '插入草稿';
+    insertButton.textContent = 'Insert into draft';
     insertButton.addEventListener('click', () => insertAtCursor(message.content.trim()));
 
     actions.append(copyButton, insertButton);
@@ -469,7 +455,7 @@ function renderAssistantAttachments() {
       (attachment) => `
         <span class="assistant-attachment" title="${escapeHtml(attachment.status || '')}">
           <span class="assistant-attachment-name">${escapeHtml(attachment.name)}</span>
-          <button type="button" data-remove-attachment="${escapeHtml(attachment.id)}" aria-label="移除附件">×</button>
+          <button type="button" data-remove-attachment="${escapeHtml(attachment.id)}" aria-label="Remove attachment">×</button>
         </span>
       `
     )
@@ -486,7 +472,7 @@ function readAttachmentFile(file) {
         name: file.name,
         content,
         truncated: file.size > MAX_ATTACHMENT_BYTES,
-        status: file.size > MAX_ATTACHMENT_BYTES ? '文本已截断' : '文本已附加'
+        status: file.size > MAX_ATTACHMENT_BYTES ? 'Text attached (truncated)' : 'Text attached'
       });
     };
     reader.onerror = () =>
@@ -495,7 +481,7 @@ function readAttachmentFile(file) {
         name: file.name,
         content: '',
         truncated: false,
-        status: '读取失败'
+        status: 'Could not read file'
       });
     reader.readAsText(file);
   });
@@ -529,17 +515,16 @@ async function runAssistant({ action = 'assist', note = '' } = {}) {
   pendingNode.classList.add('streaming');
   elements.assistantChat.appendChild(pendingNode);
   const bubble = pendingNode.querySelector('.chat-bubble');
-  bubble.innerHTML = '<span class="chat-typing">思考中…</span>';
+  bubble.innerHTML = '<span class="chat-typing">Thinking…</span>';
   elements.assistantChat.scrollTop = elements.assistantChat.scrollHeight;
 
   state.streaming = true;
   elements.assistantSendButton.disabled = true;
 
   try {
-    const response = await fetch('/api/assistant', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    let fullText = '';
+    await backend.assistantStream(
+      {
         article,
         selection,
         note,
@@ -547,56 +532,23 @@ async function runAssistant({ action = 'assist', note = '' } = {}) {
         history,
         attachments: state.assistantAttachments,
         model: elements.assistantModelSelect.value
-      })
-    });
-
-    if (!response.ok || !response.body) {
-      const payload = await response.json().catch(() => ({}));
-      throw new Error(payload.error || `请求失败：HTTP ${response.status}`);
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let fullText = '';
-    let errorMessage = '';
-
-    const processEvent = (block) => {
-      const eventMatch = block.match(/^event: (.+)$/m);
-      const dataMatch = block.match(/^data: (.+)$/m);
-      if (!eventMatch || !dataMatch) return;
-      const data = JSON.parse(dataMatch[1]);
-      if (eventMatch[1] === 'delta') {
-        fullText += data.text;
+      },
+      (delta) => {
+        fullText += delta;
         bubble.innerHTML = markdownToHtml(fullText);
         elements.assistantChat.scrollTop = elements.assistantChat.scrollHeight;
-      } else if (eventMatch[1] === 'error') {
-        errorMessage = data.message;
       }
-    };
-
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const blocks = buffer.split('\n\n');
-      buffer = blocks.pop() || '';
-      blocks.forEach(processEvent);
-    }
-    if (buffer.trim()) processEvent(buffer);
-
-    if (errorMessage) throw new Error(errorMessage);
-    if (!fullText.trim()) throw new Error('AI 返回了空响应。');
+    );
 
     assistantMessage.content = fullText;
     article.chat = [...article.chat, assistantMessage];
-    const saved = await persistArticle({ id: article.id, chat: article.chat });
+    const saved = await persistFields(article.id, { chat: article.chat });
     if (state.activeId === saved.id) renderChat();
     state.assistantAttachments = [];
     renderAssistantAttachments();
   } catch (error) {
     bubble.innerHTML = `<span class="chat-error">${escapeHtml(error.message)}</span>`;
-    await persistArticle({ id: article.id, chat: article.chat }).catch(() => {});
+    await persistFields(article.id, { chat: article.chat }).catch(() => {});
   } finally {
     pendingNode.classList.remove('streaming');
     state.streaming = false;
@@ -633,18 +585,15 @@ async function handleCreateDraft() {
   const article = await saveCurrentArticle({ quiet: true });
   if (!article) return;
   if (!article.coverPath) {
-    setWechatLog('请先上传封面图片，公众号草稿必须包含封面。');
+    setWechatLog('Upload a cover image first — WeChat drafts require one.');
     return;
   }
 
-  setBusy(elements.createDraftButton, true, '上传中…');
+  setBusy(elements.createDraftButton, true, 'Uploading…');
   try {
-    const response = await api('/api/wechat/draft', {
-      method: 'POST',
-      body: JSON.stringify({ articleId: article.id })
-    });
+    const response = await backend.wechatDraft(article.id);
     applyArticleUpdate(response.article);
-    setWechatLog({ message: '已上传到公众号草稿箱。', ...response.result });
+    setWechatLog({ message: 'Uploaded to the WeChat draft box.', ...response.result });
   } catch (error) {
     setWechatLog(error.message);
   } finally {
@@ -655,21 +604,18 @@ async function handleCreateDraft() {
 async function handlePublish() {
   const article = activeArticle();
   if (!article?.wechat?.draftMediaId) {
-    setWechatLog('请先上传到草稿箱。');
+    setWechatLog('Upload to the draft box first.');
     return;
   }
-  if (!window.confirm('正式发布会把文章直接推送给读者，确定继续吗？\n\n建议先到公众号后台检查草稿内容。')) {
+  if (!window.confirm('Publishing pushes this article to readers immediately. Continue?\n\nWe recommend reviewing the draft in the WeChat admin console first.')) {
     return;
   }
 
-  setBusy(elements.publishButton, true, '发布中…');
+  setBusy(elements.publishButton, true, 'Publishing…');
   try {
-    const response = await api('/api/wechat/publish', {
-      method: 'POST',
-      body: JSON.stringify({ articleId: article.id })
-    });
+    const response = await backend.wechatPublish(article.id);
     applyArticleUpdate(response.article);
-    setWechatLog({ message: '已提交发布，微信会异步审核。可稍后点击「查询发布状态」。', ...response.result });
+    setWechatLog({ message: 'Submitted. WeChat reviews asynchronously — click “Check publish status” in a bit.', ...response.result });
   } catch (error) {
     setWechatLog(error.message);
   } finally {
@@ -680,13 +626,13 @@ async function handlePublish() {
 async function handleStatus() {
   const article = activeArticle();
   if (!article?.wechat?.publishId) {
-    setWechatLog('还没有发布记录。');
+    setWechatLog('No publish record yet.');
     return;
   }
 
-  setBusy(elements.statusButton, true, '查询中…');
+  setBusy(elements.statusButton, true, 'Checking…');
   try {
-    const response = await api(`/api/wechat/status/${article.id}`);
+    const response = await backend.wechatStatus(article.id);
     applyArticleUpdate(response.article);
     setWechatLog(response.status);
   } catch (error) {
@@ -708,21 +654,18 @@ function closeSettings() {
 }
 
 async function saveSettings() {
-  const settings = await api('/api/settings', {
-    method: 'POST',
-    body: JSON.stringify({
-      openaiApiKey: elements.openaiApiKeyInput.value.trim(),
-      openaiBaseUrl: elements.openaiBaseUrlInput.value.trim(),
-      openaiModel: elements.openaiModelInput.value.trim(),
-      wechatAppId: elements.wechatAppIdInput.value.trim(),
-      wechatAppSecret: elements.wechatAppSecretInput.value.trim()
-    })
+  const settings = await backend.saveSettings({
+    openaiApiKey: elements.openaiApiKeyInput.value.trim(),
+    openaiBaseUrl: elements.openaiBaseUrlInput.value.trim(),
+    openaiModel: elements.openaiModelInput.value.trim(),
+    wechatAppId: elements.wechatAppIdInput.value.trim(),
+    wechatAppSecret: elements.wechatAppSecretInput.value.trim()
   });
   state.settings = settings;
   elements.openaiApiKeyInput.value = '';
   elements.wechatAppSecretInput.value = '';
   renderSettings();
-  elements.settingsState.textContent += '\n设置已保存。';
+  elements.settingsState.textContent += '\nSettings saved.';
 }
 
 // ---------- resize ----------
@@ -822,7 +765,7 @@ elements.searchInput.addEventListener('input', () => {
 
 elements.newArticleButton.addEventListener('click', async () => {
   await saveCurrentArticle({ quiet: true });
-  const article = await api('/api/articles', { method: 'POST' });
+  const article = await backend.createArticle();
   state.articles.unshift(article);
   state.activeId = article.id;
   render();
@@ -834,8 +777,8 @@ elements.saveButton.addEventListener('click', () => saveCurrentArticle());
 elements.deleteButton.addEventListener('click', async () => {
   const article = activeArticle();
   if (!article) return;
-  if (!window.confirm(`删除「${article.title || '未命名文章'}」？此操作不可恢复。`)) return;
-  const data = await api(`/api/articles/${article.id}`, { method: 'DELETE' });
+  if (!window.confirm(`Delete “${article.title || 'Untitled'}”? This cannot be undone.`)) return;
+  const data = await backend.deleteArticle(article.id);
   state.articles = data.articles || [];
   state.activeId = state.articles[0]?.id || '';
   render();
@@ -926,10 +869,10 @@ elements.coverFileInput.addEventListener('change', async () => {
   const article = activeArticle();
   if (!file || !article) return;
   try {
-    const url = await uploadImage(file);
+    const url = await backend.uploadImage(file);
     article.coverPath = url;
     renderCover();
-    await persistArticle({ id: article.id, coverPath: url });
+    await persistFields(article.id, { coverPath: url });
   } catch (error) {
     setWechatLog(error.message);
   }
@@ -960,10 +903,10 @@ elements.assistantActions.addEventListener('click', (event) => {
 elements.clearChatButton.addEventListener('click', async () => {
   const article = activeArticle();
   if (!article?.chat?.length) return;
-  if (!window.confirm('清空这篇文章的 AI 对话记录？')) return;
+  if (!window.confirm('Clear the AI conversation for this article?')) return;
   article.chat = [];
   renderChat();
-  await persistArticle({ id: article.id, chat: [] });
+  await persistFields(article.id, { chat: [] });
 });
 
 elements.assistantAttachButton.addEventListener('click', () => elements.assistantFileInput.click());
@@ -997,10 +940,7 @@ assistantComposer.addEventListener('drop', async (event) => {
 });
 
 elements.assistantModelSelect.addEventListener('change', async () => {
-  state.settings = await api('/api/settings', {
-    method: 'POST',
-    body: JSON.stringify({ openaiModel: elements.assistantModelSelect.value })
-  });
+  state.settings = await backend.saveSettings({ openaiModel: elements.assistantModelSelect.value });
   renderSettings();
 });
 
@@ -1020,32 +960,29 @@ elements.saveSettingsButton.addEventListener('click', async () => {
   try {
     await saveSettings();
   } catch (error) {
-    elements.settingsState.textContent = `保存失败：${error.message}`;
+    elements.settingsState.textContent = `Save failed: ${error.message}`;
   }
 });
 
 elements.testOpenaiButton.addEventListener('click', async () => {
-  setBusy(elements.testOpenaiButton, true, '测试中…');
+  setBusy(elements.testOpenaiButton, true, 'Testing…');
   try {
-    const result = await api('/api/assistant/test', {
-      method: 'POST',
-      body: JSON.stringify({ model: elements.openaiModelInput.value.trim() || undefined })
-    });
-    elements.settingsState.textContent = `AI 连接正常（模型：${result.model}）`;
+    const result = await backend.assistantTest(elements.openaiModelInput.value.trim() || undefined);
+    elements.settingsState.textContent = `AI connection OK (model: ${result.model})`;
   } catch (error) {
-    elements.settingsState.textContent = `AI 连接失败：${error.message}`;
+    elements.settingsState.textContent = `AI connection failed: ${error.message}`;
   } finally {
     setBusy(elements.testOpenaiButton, false);
   }
 });
 
 elements.testWechatButton.addEventListener('click', async () => {
-  setBusy(elements.testWechatButton, true, '测试中…');
+  setBusy(elements.testWechatButton, true, 'Testing…');
   try {
-    const result = await api('/api/wechat/test', { method: 'POST' });
-    elements.settingsState.textContent = `公众号连接正常（token：${result.tokenPreview}）`;
+    const result = await backend.wechatTest();
+    elements.settingsState.textContent = `WeChat connection OK (token: ${result.tokenPreview})`;
   } catch (error) {
-    elements.settingsState.textContent = `公众号连接失败：${error.message}`;
+    elements.settingsState.textContent = `WeChat connection failed: ${error.message}`;
   } finally {
     setBusy(elements.testWechatButton, false);
   }
@@ -1074,14 +1011,15 @@ window.addEventListener('beforeunload', (event) => {
 
 async function load() {
   try {
-    const data = await api('/api/data');
+    backend = await createBackend();
+    const data = backend.initialData || (await backend.getData());
     state.articles = data.articles || [];
     state.settings = data.settings || {};
     state.activeId = state.articles[0]?.id || '';
     elements.dataPath.textContent = data.dataPath || '';
     render();
   } catch (error) {
-    elements.preview.innerHTML = `<div class="empty-draft-state"><h1>加载失败</h1><p>${escapeHtml(error.message)}</p></div>`;
+    elements.preview.innerHTML = `<div class="empty-draft-state"><h1>Failed to load</h1><p>${escapeHtml(error.message)}</p></div>`;
   }
 }
 

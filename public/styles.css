@@ -1194,6 +1194,36 @@ body[data-theme="dark"] .theme-light-icon {
   margin: 0 auto;
 }
 
+.cloud-note {
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-radius: 14px;
+  background: var(--accent-soft);
+}
+
+.cloud-note h4 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: var(--accent);
+}
+
+.cloud-note p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.cloud-note a {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+body.browser-mode .publish-buttons,
+body.browser-mode .publish-hint {
+  display: none;
+}
+
 .publish-fields {
   display: grid;
   gap: 9px;

@@ -5,52 +5,60 @@ const MAX_HISTORY_MESSAGES = 20;
 
 const ACTIONS = {
   assist: {
-    label: '助手',
+    label: 'Assist',
     instruction:
-      '以均衡的编辑判断回应用户请求。如果请求较宽泛，请在大纲、改写、标题、摘要润色、结构审查和排版之间选择最有用的写作动作。回答要能直接用于当前草稿。'
+      'Respond to the user request with balanced editorial judgment. If the request is broad, choose the most useful writing move across outlining, rewriting, title work, digest polish, structure review, and formatting. Keep the answer directly usable for the current draft.'
   },
   outline: {
-    label: '大纲',
+    label: 'Outline',
     instruction:
-      '为这篇公众号文章设计清晰有力的结构：给出标题方向、核心论点、章节流程和有力的结尾。'
+      'Design a clear, compelling structure for this WeChat Official Account article: title directions, the core argument, section flow, and a strong ending.'
   },
   titles: {
-    label: '标题',
+    label: 'Titles',
     instruction:
-      '生成 12 个公众号标题选项，按克制型、观点型、故事型、易转发型分组。避免低质标题党。'
+      'Generate 12 title options for this article, grouped into restrained, opinion-led, story-led, and share-friendly styles. Avoid low-quality clickbait.'
   },
   rewrite: {
-    label: '改写',
+    label: 'Rewrite',
     instruction:
-      '改写草稿，使其更清晰、更紧凑、更适合公众号阅读节奏。保留事实与作者立场，不要添加没有依据的论断。直接输出改写后的全文。'
+      'Rewrite the draft so it is clearer, tighter, and better paced for mobile reading. Preserve facts and the author stance; do not add unsupported claims. Output the full rewritten text directly.'
   },
   summary: {
-    label: '摘要',
+    label: 'Digest',
     instruction:
-      '为这篇文章撰写简洁的公众号摘要（120 字以内），直接、具体、有吸引力，但不要过度营销。'
+      'Write a concise article digest (under 120 characters). Keep it direct, specific, and appealing without sounding overly promotional.'
   },
   review: {
-    label: '审稿',
+    label: 'Review',
     instruction:
-      '像资深编辑一样审稿：指出结构、逻辑、事实表述、冗余、标题、摘要、结尾和平台风险方面的问题，并给出可执行的修改建议。'
+      'Review like a senior editor: point out issues in structure, logic, factual wording, redundancy, title, digest, ending, and platform risk, and give actionable fixes.'
   }
 };
 
 function buildSystemPrompt(article, selection) {
   const parts = [
-    '你是一位严谨的微信公众号写作编辑，协助用户打磨当前草稿。',
-    '除非用户另有要求，请使用与草稿相同的语言回复。输出要能直接使用，保持事实准确，不要虚构来源，也不要替用户做最终发布决定。',
+    'You are a careful writing editor for WeChat Official Account articles, helping the user polish the current draft.',
+    'Reply in the same language as the draft unless the user asks otherwise. Keep the output directly usable, stay factual, never invent sources, and never make the final publishing decision for the user.',
     '',
-    `文章标题：${article?.title || '未命名文章'}`,
-    `作者：${article?.author || '未提供'}`,
-    `摘要：${article?.digest || '未提供'}`
+    `Article title: ${article?.title || 'Untitled'}`,
+    `Author: ${article?.author || 'Not provided'}`,
+    `Digest: ${article?.digest || 'Not provided'}`
   ];
 
   const draft = article?.contentMarkdown || '';
-  parts.push('', '当前草稿全文：', draft.trim() ? draft.slice(0, 24_000) : '（草稿为空，请根据标题与摘要开展工作。）');
+  parts.push(
+    '',
+    'Current draft:',
+    draft.trim() ? draft.slice(0, 24_000) : '(The draft is empty. Work from the title and digest.)'
+  );
 
   if (selection?.trim()) {
-    parts.push('', '用户当前选中的文本（若用户要求修改，优先针对这段）：', selection.slice(0, 8_000));
+    parts.push(
+      '',
+      'Text the user currently has selected (focus on this if they ask for edits):',
+      selection.slice(0, 8_000)
+    );
   }
 
   return parts.join('\n');
@@ -62,13 +70,13 @@ function formatAttachments(attachments = []) {
   let remaining = MAX_ATTACHMENT_CHARS;
   const parts = [];
   for (const attachment of attachments.slice(0, 8)) {
-    const label = attachment.name || '附件';
+    const label = attachment.name || 'Attachment';
     if (attachment.content && remaining > 0) {
       const content = String(attachment.content).slice(0, remaining);
       remaining -= content.length;
-      parts.push(`文件：${label}${attachment.truncated ? '（已截断）' : ''}\n内容：\n${content}`);
+      parts.push(`File: ${label}${attachment.truncated ? ' (truncated)' : ''}\nContent:\n${content}`);
     } else {
-      parts.push(`文件：${label}\n说明：${attachment.status || '已附加，但没有可读取的文本。'}`);
+      parts.push(`File: ${label}\nNote: ${attachment.status || 'Attached, but no readable text was available.'}`);
     }
   }
   return parts.join('\n\n---\n\n');
@@ -86,14 +94,14 @@ function buildMessages({ article, selection, note, action, history, attachments 
   const actionConfig = action && action !== 'assist' ? ACTIONS[action] : null;
   const attachmentContext = formatAttachments(attachments);
   const userParts = [
-    actionConfig ? `任务：${actionConfig.instruction}` : '',
+    actionConfig ? `Task: ${actionConfig.instruction}` : '',
     note ? note : '',
-    attachmentContext ? `\n附加参考资料：\n${attachmentContext}` : ''
+    attachmentContext ? `\nReference material:\n${attachmentContext}` : ''
   ].filter(Boolean);
 
   messages.push({
     role: 'user',
-    content: userParts.join('\n\n') || '请根据当前草稿给出最有帮助的写作建议。'
+    content: userParts.join('\n\n') || 'Give the most helpful writing advice for the current draft.'
   });
 
   return messages;
@@ -101,7 +109,7 @@ function buildMessages({ article, selection, note, action, history, attachments 
 
 async function requestChatCompletion({ apiKey, baseUrl, model, messages, stream }) {
   if (!apiKey) {
-    throw new Error('缺少 OpenAI API Key，请先在设置中填写。');
+    throw new Error('Missing OpenAI API key. Add it in Settings first.');
   }
 
   const url = `${(baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, '')}/chat/completions`;
@@ -120,7 +128,7 @@ async function requestChatCompletion({ apiKey, baseUrl, model, messages, stream 
 
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
-    const message = payload?.error?.message || `OpenAI 请求失败：HTTP ${response.status}`;
+    const message = payload?.error?.message || `OpenAI request failed: HTTP ${response.status}`;
     throw new Error(message);
   }
 
@@ -160,7 +168,7 @@ async function streamAssistant(options, onDelta) {
   }
 
   if (!fullText.trim()) {
-    throw new Error('OpenAI 返回了空响应。');
+    throw new Error('OpenAI returned an empty response.');
   }
   return fullText;
 }

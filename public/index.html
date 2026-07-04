@@ -1,9 +1,10 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Plume Studio — Write, refine, and publish</title>
+    <meta name="description" content="Plume Studio: a quiet writing desk with an AI co-writer and one-click WeChat publishing." />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
@@ -21,31 +22,31 @@
             </svg>
           </span>
         </div>
-        <button class="rail-button" id="newArticleButton" data-tooltip="新建草稿" aria-label="新建草稿">
+        <button class="rail-button" id="newArticleButton" data-tooltip="New draft" aria-label="New draft">
           <svg class="rail-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 5v14M5 12h14" />
           </svg>
         </button>
-        <button class="rail-button active" id="toggleDraftsButton" data-tooltip="草稿列表" aria-label="草稿列表">
+        <button class="rail-button active" id="toggleDraftsButton" data-tooltip="Drafts" aria-label="Drafts">
           <svg class="rail-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M5 4h14v16H5z" />
             <path d="M9 8h6M9 12h6M9 16h4" />
           </svg>
         </button>
-        <button class="rail-button" id="jumpAssistantButton" data-tooltip="AI 助手" aria-label="AI 助手">
+        <button class="rail-button" id="jumpAssistantButton" data-tooltip="AI assistant" aria-label="AI assistant">
           <svg class="rail-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M8 8h8a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-4a3 3 0 0 1 3-3Z" />
             <path d="M12 8V5M9 5h6M8.5 13h.1M15.5 13h.1" />
             <path d="M9 18v2M15 18v2" />
           </svg>
         </button>
-        <button class="rail-button" id="toggleInspectorButton" data-tooltip="收起面板" aria-label="收起面板">
+        <button class="rail-button" id="toggleInspectorButton" data-tooltip="Hide panel" aria-label="Hide panel">
           <svg class="rail-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M6 4h12v16l-6-3.6L6 20V4Z" />
           </svg>
         </button>
         <div class="rail-spacer"></div>
-        <button class="rail-button theme-toggle" id="themeButton" data-tooltip="深色模式" aria-label="深色模式">
+        <button class="rail-button theme-toggle" id="themeButton" data-tooltip="Dark mode" aria-label="Dark mode">
           <svg class="rail-icon theme-icon theme-dark-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 3a7 7 0 1 0 8.2 8.2A5.5 5.5 0 0 1 12 3Z" />
             <path d="M19 3v4M21 5h-4" />
@@ -55,7 +56,7 @@
             <path d="M12 2v2M12 20v2M4 12H2M22 12h-2M4.93 4.93 6.34 6.34M17.66 17.66l1.41 1.41M19.07 4.93l-1.41 1.41M6.34 17.66l-1.41 1.41" />
           </svg>
         </button>
-        <button class="rail-button" id="openSettingsButton" data-tooltip="设置" aria-label="设置">
+        <button class="rail-button" id="openSettingsButton" data-tooltip="Settings" aria-label="Settings">
           <svg class="rail-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
             <path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.04.04a2.1 2.1 0 0 1-2.97 2.97l-.04-.04a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.09 1.65V21a2.1 2.1 0 0 1-4.2 0v-.06a1.8 1.8 0 0 0-1.09-1.65 1.8 1.8 0 0 0-1.98.36l-.04.04a2.1 2.1 0 0 1-2.97-2.97l.04-.04A1.8 1.8 0 0 0 4.6 15a1.8 1.8 0 0 0-1.65-1.09H3a2.1 2.1 0 0 1 0-4.2h.06A1.8 1.8 0 0 0 4.7 8.62a1.8 1.8 0 0 0-.36-1.98l-.04-.04a2.1 2.1 0 0 1 2.97-2.97l.04.04a1.8 1.8 0 0 0 1.98.36A1.8 1.8 0 0 0 10.38 2.4V2.3a2.1 2.1 0 0 1 4.2 0v.1a1.8 1.8 0 0 0 1.09 1.65 1.8 1.8 0 0 0 1.98-.36l.04-.04a2.1 2.1 0 0 1 2.97 2.97l-.04.04a1.8 1.8 0 0 0-.36 1.98 1.8 1.8 0 0 0 1.65 1.09H22a2.1 2.1 0 0 1 0 4.2h-.1A1.8 1.8 0 0 0 19.4 15Z" />
@@ -66,27 +67,27 @@
       <aside class="draft-drawer">
         <div class="drawer-header">
           <div>
-            <span class="eyebrow">草稿库</span>
-            <h2>文章</h2>
+            <span class="eyebrow">Library</span>
+            <h2>Drafts</h2>
           </div>
           <span id="draftCount" class="count-pill">0</span>
         </div>
         <div class="drawer-search">
-          <input id="searchInput" type="search" placeholder="搜索草稿…" />
+          <input id="searchInput" type="search" placeholder="Search drafts…" />
         </div>
         <div class="article-list" id="articleList"></div>
         <p id="dataPath" class="data-path"></p>
       </aside>
 
-      <div class="resize-handle" id="draftResizeHandle" title="调整宽度"></div>
+      <div class="resize-handle" id="draftResizeHandle" title="Resize"></div>
 
       <main class="workspace">
         <header class="paperbar">
-          <nav class="paper-tabs" aria-label="文档操作">
-            <button class="paper-tab active">草稿</button>
-            <button class="paper-tab" id="saveButton">保存</button>
-            <button class="paper-tab" id="insertImageButton">插入图片</button>
-            <button class="paper-tab danger" id="deleteButton">删除</button>
+          <nav class="paper-tabs" aria-label="Document actions">
+            <button class="paper-tab active">Draft</button>
+            <button class="paper-tab" id="saveButton">Save</button>
+            <button class="paper-tab" id="insertImageButton">Insert image</button>
+            <button class="paper-tab danger" id="deleteButton">Delete</button>
           </nav>
           <div class="paperbar-meta">
             <span id="wordCount" class="word-count"></span>
@@ -96,23 +97,23 @@
 
         <section class="editor-stage">
           <article class="editor-sheet">
-            <div class="doc-kicker">公众号本地草稿</div>
-            <textarea id="titleInput" class="title-input" placeholder="文章标题" rows="2"></textarea>
+            <div class="doc-kicker">Local draft</div>
+            <textarea id="titleInput" class="title-input" placeholder="Article title" rows="2"></textarea>
             <div class="byline-row">
-              <input id="authorInput" placeholder="作者" />
+              <input id="authorInput" placeholder="Author" />
             </div>
-            <textarea id="contentInput" spellcheck="false" placeholder="用 Markdown 开始写作……"></textarea>
+            <textarea id="contentInput" spellcheck="false" placeholder="Start writing in Markdown…"></textarea>
           </article>
         </section>
       </main>
 
-      <div class="resize-handle" id="inspectorResizeHandle" title="调整宽度"></div>
+      <div class="resize-handle" id="inspectorResizeHandle" title="Resize"></div>
 
       <aside class="inspector">
         <div class="tabs">
-          <button class="tab active" data-tab="preview">预览</button>
-          <button class="tab" data-tab="assistant">AI 助手</button>
-          <button class="tab" data-tab="publish">发布</button>
+          <button class="tab active" data-tab="preview">Preview</button>
+          <button class="tab" data-tab="assistant">Assistant</button>
+          <button class="tab" data-tab="publish">Publish</button>
         </div>
 
         <section class="panel active" id="previewPanel">
@@ -122,13 +123,13 @@
         <section class="panel assistant-panel" id="assistantPanel">
           <div class="assistant-toolbar">
             <div class="assistant-actions" id="assistantActions">
-              <button class="action-chip" data-action="outline">大纲</button>
-              <button class="action-chip" data-action="titles">标题</button>
-              <button class="action-chip" data-action="rewrite">改写</button>
-              <button class="action-chip" data-action="summary">摘要</button>
-              <button class="action-chip" data-action="review">审稿</button>
+              <button class="action-chip" data-action="outline">Outline</button>
+              <button class="action-chip" data-action="titles">Titles</button>
+              <button class="action-chip" data-action="rewrite">Rewrite</button>
+              <button class="action-chip" data-action="summary">Digest</button>
+              <button class="action-chip" data-action="review">Review</button>
             </div>
-            <button class="assistant-toolbar-button" id="clearChatButton" type="button">清空对话</button>
+            <button class="assistant-toolbar-button" id="clearChatButton" type="button">Clear chat</button>
           </div>
 
           <div class="assistant-chat" id="assistantChat">
@@ -139,23 +140,23 @@
                   <path d="M23 6h4M25 4v4M6 25h4M8 23v4" />
                 </svg>
               </div>
-              <h3>和 AI 一起打磨这篇草稿</h3>
+              <h3>Polish this draft with AI</h3>
               <ul>
-                <li>选中正文任意片段后提问，助手会优先处理选中内容</li>
-                <li>用上方快捷按钮生成大纲、标题、摘要或整体审稿</li>
-                <li>点击回复下方的「插入草稿」可直接把结果写进正文</li>
+                <li>Select any passage before asking — the assistant focuses on it</li>
+                <li>Use the quick actions above for outlines, titles, digests, or a full review</li>
+                <li>Click “Insert into draft” under a reply to drop it straight into your text</li>
               </ul>
             </div>
           </div>
 
           <div class="assistant-composer">
             <div class="assistant-attachments" id="assistantAttachments" hidden></div>
-            <textarea id="assistantNote" class="assistant-input" placeholder="询问关于这篇草稿或选中文本的任何问题…（Cmd/Ctrl + Enter 发送）"></textarea>
+            <textarea id="assistantNote" class="assistant-input" placeholder="Ask anything about this draft or the selected text… (Cmd/Ctrl + Enter to send)"></textarea>
             <div class="assistant-composer-bar">
-              <button class="assistant-import-button" id="assistantAttachButton" type="button" title="附加参考文件" aria-label="附加参考文件">+</button>
-              <select id="assistantModelSelect" class="assistant-model-select" title="模型"></select>
+              <button class="assistant-import-button" id="assistantAttachButton" type="button" title="Attach reference files" aria-label="Attach reference files">+</button>
+              <select id="assistantModelSelect" class="assistant-model-select" title="Model"></select>
               <div class="assistant-composer-spacer"></div>
-              <button class="assistant-send-button" id="assistantSendButton" type="button" title="发送" aria-label="发送">
+              <button class="assistant-send-button" id="assistantSendButton" type="button" title="Send" aria-label="Send">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M12 19V5" />
                   <path d="m6 11 6-6 6 6" />
@@ -168,27 +169,36 @@
 
         <section class="panel publish-panel" id="publishPanel">
           <div class="publish-stack">
+            <div class="cloud-note" id="publishCloudNote" hidden>
+              <h4>WeChat publishing needs the self-hosted version</h4>
+              <p>
+                The WeChat API only accepts calls from a fixed, allowlisted server IP, so publishing
+                can’t run from this public site. Everything else works right here.
+                <a href="https://github.com/xuxuezhou/wechat-writing-studio" target="_blank" rel="noopener">Run it locally →</a>
+              </p>
+            </div>
+
             <div class="publish-fields">
-              <label>摘要</label>
-              <textarea id="digestInput" rows="3" placeholder="展示在公众号列表里的简短摘要"></textarea>
+              <label>Digest</label>
+              <textarea id="digestInput" rows="3" placeholder="Short summary shown in article lists"></textarea>
 
-              <label>原文链接 <span class="optional-label">（可选）</span></label>
-              <input id="sourceUrlInput" placeholder="阅读原文跳转链接" />
+              <label>Source URL <span class="optional-label">(optional)</span></label>
+              <input id="sourceUrlInput" placeholder="“Read the original” link" />
 
-              <label>封面图片</label>
+              <label>Cover image</label>
               <div class="cover-uploader" id="coverUploader">
-                <img id="coverPreview" alt="封面预览" hidden />
+                <img id="coverPreview" alt="Cover preview" hidden />
                 <div class="cover-placeholder" id="coverPlaceholder">
-                  <span>点击上传封面</span>
-                  <small>公众号草稿必须包含封面（jpg / png）</small>
+                  <span>Click to upload a cover</span>
+                  <small>WeChat drafts require a cover (jpg / png)</small>
                 </div>
               </div>
               <input id="coverFileInput" type="file" accept=".jpg,.jpeg,.png" hidden />
 
               <div class="publish-options">
-                <label title="在文章正文中显示封面图片"><input id="showCoverInput" type="checkbox" /> 正文显示封面</label>
-                <label title="开放文章评论"><input id="openCommentInput" type="checkbox" /> 开放评论</label>
-                <label title="仅粉丝可评论"><input id="fansOnlyCommentInput" type="checkbox" /> 仅粉丝可评论</label>
+                <label title="Show the cover image inside the article body"><input id="showCoverInput" type="checkbox" /> Cover in body</label>
+                <label title="Open comments on the published article"><input id="openCommentInput" type="checkbox" /> Comments</label>
+                <label title="Only followers can comment"><input id="fansOnlyCommentInput" type="checkbox" /> Followers only</label>
               </div>
             </div>
 
@@ -196,11 +206,14 @@
             <pre id="wechatLog"></pre>
 
             <div class="publish-buttons">
-              <button class="publish-primary" id="createDraftButton">上传到草稿箱</button>
-              <button class="publish-secondary" id="publishButton">正式发布</button>
-              <button class="publish-secondary" id="statusButton">查询发布状态</button>
+              <button class="publish-primary" id="createDraftButton">Upload to draft box</button>
+              <button class="publish-secondary" id="publishButton">Publish</button>
+              <button class="publish-secondary" id="statusButton">Check publish status</button>
             </div>
-            <p class="publish-hint">建议流程：上传草稿箱 → 到公众号后台人工检查 → 再正式发布。正式发布会直接推送给读者，请谨慎操作。</p>
+            <p class="publish-hint">
+              Recommended flow: upload to the draft box → review in the WeChat admin console → then publish.
+              Publishing pushes the article to readers immediately.
+            </p>
           </div>
         </section>
       </aside>
@@ -212,54 +225,63 @@
       <section class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
         <header class="settings-header">
           <div>
-            <span class="eyebrow">工作台</span>
-            <h2 id="settingsTitle">设置</h2>
+            <span class="eyebrow">Workspace</span>
+            <h2 id="settingsTitle">Settings</h2>
           </div>
-          <button class="close-button" id="closeSettingsButton" title="关闭设置">关闭</button>
+          <button class="close-button" id="closeSettingsButton" title="Close settings">Close</button>
         </header>
 
         <div class="settings-body">
           <section class="settings-section">
-            <h3>AI 模型（OpenAI 兼容接口）</h3>
-            <p>写作助手通过 OpenAI API 调用。ChatGPT Plus 订阅无法直接被第三方应用使用，请在 platform.openai.com 创建 API Key；也可以填写任何 OpenAI 兼容服务的 Base URL。</p>
-            <label>API Key</label>
-            <input id="openaiApiKeyInput" type="password" placeholder="留空则保持当前已保存的 Key" autocomplete="off" />
-            <label>Base URL <span class="optional-label">（可选，默认 https://api.openai.com/v1）</span></label>
+            <h3>AI model (OpenAI-compatible)</h3>
+            <p id="aiSettingsNote">
+              The assistant calls the OpenAI API. A ChatGPT Plus subscription can’t be used by
+              third-party apps — create an API key at platform.openai.com, or point the Base URL at
+              any OpenAI-compatible service.
+            </p>
+            <label>API key</label>
+            <input id="openaiApiKeyInput" type="password" placeholder="Leave blank to keep the saved key" autocomplete="off" />
+            <label>Base URL <span class="optional-label">(optional, defaults to https://api.openai.com/v1)</span></label>
             <input id="openaiBaseUrlInput" placeholder="https://api.openai.com/v1" />
-            <label>默认模型</label>
+            <label>Default model</label>
             <input id="openaiModelInput" list="modelOptions" placeholder="gpt-5.4-mini" />
             <datalist id="modelOptions">
               <option value="gpt-5.4-mini"></option>
               <option value="gpt-5.4"></option>
               <option value="gpt-5.5"></option>
             </datalist>
-            <button id="testOpenaiButton" type="button">测试 AI 连接</button>
+            <button id="testOpenaiButton" type="button">Test AI connection</button>
           </section>
 
-          <section class="settings-section">
-            <h3>微信公众号</h3>
-            <p>在公众号后台「设置与开发 → 基本配置」获取 AppID 和 AppSecret，并把本机出口 IP 加入 IP 白名单。上传草稿和正式发布需要已认证的公众号。</p>
+          <section class="settings-section" id="wechatSettingsSection">
+            <h3>WeChat Official Account</h3>
+            <p>
+              Get the AppID and AppSecret from Settings &amp; Development → Basic Configuration in the
+              WeChat admin console, and add this machine’s egress IP to the IP allowlist. Draft and
+              publish APIs require a verified account.
+            </p>
             <label>AppID</label>
             <input id="wechatAppIdInput" autocomplete="off" />
             <label>AppSecret</label>
-            <input id="wechatAppSecretInput" type="password" placeholder="留空则保持当前已保存的密钥" autocomplete="off" />
-            <button id="testWechatButton" type="button">测试公众号连接</button>
+            <input id="wechatAppSecretInput" type="password" placeholder="Leave blank to keep the saved secret" autocomplete="off" />
+            <button id="testWechatButton" type="button">Test WeChat connection</button>
           </section>
 
           <section class="settings-section">
-            <h3>布局</h3>
-            <button id="resetLayoutButton">重置布局</button>
+            <h3>Layout</h3>
+            <button id="resetLayoutButton">Reset layout</button>
           </section>
 
           <footer class="settings-footer">
-            <button id="saveSettingsButton">保存设置</button>
+            <button id="saveSettingsButton">Save settings</button>
             <div class="settings-state" id="settingsState"></div>
           </footer>
         </div>
       </section>
     </div>
 
-    <script src="/shared/markdown.js"></script>
+    <script src="./shared/markdown.js"></script>
+    <script src="./backend.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>
