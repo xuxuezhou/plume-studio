@@ -8,4 +8,4 @@ PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 rm -f "$PLIST"
 
-echo "Plume Studio 常驻服务已卸载。仍可用 npm start 手动启动。"
+echo "Plume Studio service removed. You can still start it manually with npm start."

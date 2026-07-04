@@ -11,7 +11,7 @@ PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 LOG_DIR="$HOME/.wewrite-studio"
 
 if [ -z "$NODE_BIN" ]; then
-  echo "找不到 node，请先安装 Node.js。" >&2
+  echo "node not found. Install Node.js first." >&2
   exit 1
 fi
 
@@ -51,7 +51,7 @@ PLIST
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
 
-echo "✅ Plume Studio 已安装为常驻服务（开机自启、崩溃自动重启）。"
-echo "   固定网址：http://localhost:$PORT"
-echo "   日志文件：$LOG_DIR/plume-studio.log"
-echo "   卸载服务：npm run service:uninstall"
+echo "✅ Plume Studio is installed as a background service (starts at login, auto-restarts)."
+echo "   Permanent URL: http://localhost:$PORT"
+echo "   Log file:      $LOG_DIR/plume-studio.log"
+echo "   Uninstall:     npm run service:uninstall"
