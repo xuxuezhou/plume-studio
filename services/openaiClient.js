@@ -1,128 +1,111 @@
 const DEFAULT_MODEL = process.env.OPENAI_MODEL || 'gpt-5.4-mini';
+const DEFAULT_BASE_URL = 'https://api.openai.com/v1';
+const MAX_ATTACHMENT_CHARS = 18_000;
+const MAX_HISTORY_MESSAGES = 20;
 
 const ACTIONS = {
   assist: {
-    label: 'Assistant',
+    label: '助手',
     instruction:
-      'Respond to the user request with balanced editorial judgment. If the request is broad, choose the most useful writing move across outlining, rewriting, title work, digest polish, structure review, and formatting. Keep the answer directly usable for the current draft.'
+      '以均衡的编辑判断回应用户请求。如果请求较宽泛，请在大纲、改写、标题、摘要润色、结构审查和排版之间选择最有用的写作动作。回答要能直接用于当前草稿。'
   },
   outline: {
-    label: 'Outline',
+    label: '大纲',
     instruction:
-      'Create a clear, compelling structure for this WeChat Official Account article. Include title ideas, the core argument, section flow, and a strong ending.'
+      '为这篇公众号文章设计清晰有力的结构：给出标题方向、核心论点、章节流程和有力的结尾。'
   },
   titles: {
-    label: 'Titles',
+    label: '标题',
     instruction:
-      'Generate 12 WeChat Official Account title options grouped into restrained, opinion-led, story-led, and share-friendly styles. Avoid low-quality clickbait.'
+      '生成 12 个公众号标题选项，按克制型、观点型、故事型、易转发型分组。避免低质标题党。'
   },
   rewrite: {
-    label: 'Rewrite',
+    label: '改写',
     instruction:
-      'Rewrite the draft so it is clearer, tighter, and better paced for WeChat reading. Preserve facts and the author stance. Do not add unsupported claims.'
+      '改写草稿，使其更清晰、更紧凑、更适合公众号阅读节奏。保留事实与作者立场，不要添加没有依据的论断。直接输出改写后的全文。'
   },
   summary: {
-    label: 'Digest',
+    label: '摘要',
     instruction:
-      'Write a concise WeChat digest. Keep it direct, specific, and appealing without sounding overly promotional.'
+      '为这篇文章撰写简洁的公众号摘要（120 字以内），直接、具体、有吸引力，但不要过度营销。'
   },
   review: {
-    label: 'Review',
+    label: '审稿',
     instruction:
-      'Review like a senior editor. Identify issues in structure, logic, factual wording, redundancy, title, digest, ending, and platform risk. Give actionable fixes.'
-  },
-  format: {
-    label: 'Format',
-    instruction:
-      'Format the draft as clean HTML suitable for pasting into the WeChat editor. Use simple paragraphs, headings, emphasis, and quote blocks. Do not use external CSS.'
+      '像资深编辑一样审稿：指出结构、逻辑、事实表述、冗余、标题、摘要、结尾和平台风险方面的问题，并给出可执行的修改建议。'
   }
 };
-const MAX_ATTACHMENT_CHARS = 18_000;
 
-function extractOutputText(payload) {
-  if (payload.output_text) {
-    return payload.output_text;
+function buildSystemPrompt(article, selection) {
+  const parts = [
+    '你是一位严谨的微信公众号写作编辑，协助用户打磨当前草稿。',
+    '除非用户另有要求，请使用与草稿相同的语言回复。输出要能直接使用，保持事实准确，不要虚构来源，也不要替用户做最终发布决定。',
+    '',
+    `文章标题：${article?.title || '未命名文章'}`,
+    `作者：${article?.author || '未提供'}`,
+    `摘要：${article?.digest || '未提供'}`
+  ];
+
+  const draft = article?.contentMarkdown || '';
+  parts.push('', '当前草稿全文：', draft.trim() ? draft.slice(0, 24_000) : '（草稿为空，请根据标题与摘要开展工作。）');
+
+  if (selection?.trim()) {
+    parts.push('', '用户当前选中的文本（若用户要求修改，优先针对这段）：', selection.slice(0, 8_000));
   }
 
-  const chunks = [];
-  for (const item of payload.output || []) {
-    for (const part of item.content || []) {
-      if (part.type === 'output_text' && part.text) {
-        chunks.push(part.text);
-      }
-      if (part.type === 'text' && part.text) {
-        chunks.push(part.text);
-      }
-    }
-  }
-
-  return chunks.join('\n').trim();
+  return parts.join('\n');
 }
 
 function formatAttachments(attachments = []) {
-  if (!Array.isArray(attachments) || attachments.length === 0) {
-    return '';
-  }
+  if (!Array.isArray(attachments) || attachments.length === 0) return '';
 
   let remaining = MAX_ATTACHMENT_CHARS;
   const parts = [];
-
   for (const attachment of attachments.slice(0, 8)) {
-    const label = `${attachment.name || 'Attachment'}${attachment.path ? ` (${attachment.path})` : ''}`;
+    const label = attachment.name || '附件';
     if (attachment.content && remaining > 0) {
-      const content = attachment.content.slice(0, remaining);
+      const content = String(attachment.content).slice(0, remaining);
       remaining -= content.length;
-      parts.push(
-        [
-          `File: ${label}`,
-          attachment.truncated ? 'Note: File was truncated before being added to the prompt.' : '',
-          'Content:',
-          content
-        ]
-          .filter(Boolean)
-          .join('\n')
-      );
-      continue;
+      parts.push(`文件：${label}${attachment.truncated ? '（已截断）' : ''}\n内容：\n${content}`);
+    } else {
+      parts.push(`文件：${label}\n说明：${attachment.status || '已附加，但没有可读取的文本。'}`);
     }
-
-    parts.push(`File: ${label}\nNote: ${attachment.status || 'Attached, but no readable text was available.'}`);
   }
-
   return parts.join('\n\n---\n\n');
 }
 
-async function runWritingAssistant({
-  apiKey,
-  model,
-  action,
-  article,
-  selection,
-  note,
-  attachments
-}) {
-  if (!apiKey) {
-    throw new Error('Missing OpenAI API key. Add it in Settings first.');
+function buildMessages({ article, selection, note, action, history, attachments }) {
+  const messages = [{ role: 'system', content: buildSystemPrompt(article, selection) }];
+
+  for (const message of (history || []).slice(-MAX_HISTORY_MESSAGES)) {
+    if ((message.role === 'user' || message.role === 'assistant') && message.content) {
+      messages.push({ role: message.role, content: String(message.content).slice(0, 12_000) });
+    }
   }
 
-  const actionConfig = ACTIONS[action] || ACTIONS.assist;
-  const targetText = selection?.trim() || article.contentMarkdown || '';
+  const actionConfig = action && action !== 'assist' ? ACTIONS[action] : null;
   const attachmentContext = formatAttachments(attachments);
-  const userPrompt = [
-    `Task: ${actionConfig.instruction}`,
-    '',
-    `Article title: ${article.title || 'Untitled Article'}`,
-    `Author: ${article.author || 'Not provided'}`,
-    `Digest: ${article.digest || 'Not provided'}`,
-    note ? `Extra instructions: ${note}` : '',
-    attachmentContext ? `\nAttached context:\n${attachmentContext}` : '',
-    '',
-    'Draft:',
-    targetText || '(The draft is empty. Work from the title and digest.)'
-  ]
-    .filter(Boolean)
-    .join('\n');
+  const userParts = [
+    actionConfig ? `任务：${actionConfig.instruction}` : '',
+    note ? note : '',
+    attachmentContext ? `\n附加参考资料：\n${attachmentContext}` : ''
+  ].filter(Boolean);
 
-  const response = await fetch('https://api.openai.com/v1/responses', {
+  messages.push({
+    role: 'user',
+    content: userParts.join('\n\n') || '请根据当前草稿给出最有帮助的写作建议。'
+  });
+
+  return messages;
+}
+
+async function requestChatCompletion({ apiKey, baseUrl, model, messages, stream }) {
+  if (!apiKey) {
+    throw new Error('缺少 OpenAI API Key，请先在设置中填写。');
+  }
+
+  const url = `${(baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, '')}/chat/completions`;
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -130,35 +113,77 @@ async function runWritingAssistant({
     },
     body: JSON.stringify({
       model: model || DEFAULT_MODEL,
-      instructions:
-        'You are a careful WeChat Official Account writing editor. Reply in the same language as the draft unless the user asks otherwise. Keep the output directly usable, be factual, do not invent sources, and never make the final publishing decision for the user.',
-      input: userPrompt,
-      max_output_tokens: 2400
+      messages,
+      stream: Boolean(stream)
     })
   });
 
-  const payload = await response.json().catch(() => ({}));
-
   if (!response.ok) {
-    const message = payload?.error?.message || `OpenAI request failed: HTTP ${response.status}`;
+    const payload = await response.json().catch(() => ({}));
+    const message = payload?.error?.message || `OpenAI 请求失败：HTTP ${response.status}`;
     throw new Error(message);
   }
 
-  const text = extractOutputText(payload);
-  if (!text) {
-    throw new Error('OpenAI returned an empty response.');
+  return response;
+}
+
+// Streams assistant output; calls onDelta(textChunk) as tokens arrive, resolves with the full text.
+async function streamAssistant(options, onDelta) {
+  const messages = buildMessages(options);
+  const response = await requestChatCompletion({ ...options, messages, stream: true });
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullText = '';
+
+  for await (const chunk of response.body) {
+    buffer += decoder.decode(chunk, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('data:')) continue;
+      const payload = trimmed.slice(5).trim();
+      if (payload === '[DONE]') continue;
+      try {
+        const parsed = JSON.parse(payload);
+        const delta = parsed.choices?.[0]?.delta?.content || '';
+        if (delta) {
+          fullText += delta;
+          onDelta?.(delta);
+        }
+      } catch {
+        // Ignore malformed keep-alive lines.
+      }
+    }
   }
 
+  if (!fullText.trim()) {
+    throw new Error('OpenAI 返回了空响应。');
+  }
+  return fullText;
+}
+
+async function testConnection({ apiKey, baseUrl, model }) {
+  const response = await requestChatCompletion({
+    apiKey,
+    baseUrl,
+    model,
+    messages: [{ role: 'user', content: "Reply with the single word 'ok'." }],
+    stream: false
+  });
+  const payload = await response.json();
   return {
-    action,
-    label: actionConfig.label,
-    text,
-    model: model || DEFAULT_MODEL
+    ok: true,
+    model: payload.model || model || DEFAULT_MODEL,
+    reply: payload.choices?.[0]?.message?.content?.trim() || ''
   };
 }
 
 module.exports = {
   ACTIONS,
   DEFAULT_MODEL,
-  runWritingAssistant
+  streamAssistant,
+  testConnection
 };

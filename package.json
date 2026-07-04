@@ -1,74 +1,16 @@
 {
   "name": "wechat-writing-studio",
-  "version": "0.1.18",
-  "description": "A local AI-assisted writing desk for WeChat Official Account publishing.",
+  "version": "0.2.0",
+  "description": "A web-based AI-assisted writing desk for WeChat Official Account publishing.",
   "author": "Allen",
-  "main": "main.js",
+  "main": "server.js",
   "private": true,
   "scripts": {
-    "start": "electron .",
-    "dev": "electron .",
-    "pack": "electron-builder --dir",
-    "pack:mac": "electron-builder --mac dir --arm64 --x64",
-    "pack:linux": "electron-builder --linux dir --x64",
-    "dist": "electron-builder",
-    "dist:mac": "electron-builder --mac dmg --arm64 --x64",
-    "dist:linux": "electron-builder --linux deb --x64"
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "check": "node --check server.js && node --check lib/store.js && node --check lib/markdown.js && node --check services/openaiClient.js && node --check services/wechatClient.js && node --check public/app.js"
   },
-  "build": {
-    "appId": "com.codex.wechatwritingstudio",
-    "productName": "WeWrite Studio",
-    "artifactName": "wechat-writing-studio-${version}-${os}-${arch}.${ext}",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "main.js",
-      "preload.js",
-      "services/**/*",
-      "renderer/**/*",
-      "assets/**/*",
-      "package.json"
-    ],
-    "mac": {
-      "category": "public.app-category.productivity",
-      "target": [
-        "dmg",
-        "dir"
-      ]
-    },
-    "linux": {
-      "target": [
-        "deb"
-      ],
-      "category": "Office;TextEditor",
-      "maintainer": "Allen",
-      "synopsis": "AI-assisted WeChat Official Account writing studio",
-      "description": "A local AI-assisted writing desk for drafting, editing, and preparing WeChat Official Account articles.",
-      "desktop": {
-        "entry": {
-          "Name": "WeWrite Studio",
-          "Comment": "Draft, edit, and prepare WeChat Official Account articles"
-        }
-      }
-    },
-    "deb": {
-      "packageCategory": "editors",
-      "depends": [
-        "libgtk-3-0",
-        "libnotify4",
-        "libnss3",
-        "libxss1",
-        "libxtst6",
-        "xdg-utils",
-        "libatspi2.0-0",
-        "libuuid1",
-        "libsecret-1-0"
-      ]
-    }
-  },
-  "devDependencies": {
-    "electron": "^42.3.3",
-    "electron-builder": "^26.8.1"
+  "dependencies": {
+    "express": "^4.21.2"
   }
 }

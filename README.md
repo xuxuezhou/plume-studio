@@ -1,139 +1,76 @@
 # WeWrite Studio
 
-WeWrite Studio is a local desktop writing app for drafting, editing, and preparing WeChat Official Account articles with OpenAI API assistance.
+WeWrite Studio 是一个网页版的微信公众号写作台：在本地浏览器里写作、AI 辅助修改、然后一键上传到公众号草稿箱并正式发布。
 
-Current app version: `0.1.18`.
+当前版本：`0.2.0`（从 0.1.x 的 Electron 桌面版迁移为 Web 版）。
 
-## Features
+## 功能
 
-- Local draft library with create, save, delete, saved-time labels, and preview.
-- Paper-style editor with a right-side preview, assistant, and publish panel.
-- AI writing assistant powered by the OpenAI API key saved on this device.
-- WeChat draft upload through the Official Account API.
-- Adjustable and collapsible library/right panel layout.
-- Light/dark mode, settings, and navigation controls in the left rail.
-- Linux `.deb` packaging and macOS `.dmg` packaging share the same app version.
+- **草稿库**：新建 / 保存 / 删除 / 搜索，自动保存，保存时间标签
+- **纸感编辑器**：Markdown 写作，实时预览，字数统计，图片可通过按钮、拖拽或粘贴插入
+- **AI 写作助手**：聊天式交互（流式输出），对话记录随文章保存；快捷操作一键生成大纲、标题、改写、摘要、审稿；结果可直接插入草稿；支持附加参考文件
+- **公众号发布**：
+  - 上传封面（永久素材）
+  - 正文本地图片自动上传到微信图床并替换链接
+  - 发布用 HTML 自动内联样式（微信编辑器会剥离 class / 外部 CSS）
+  - 上传到草稿箱 → 正式发布（freepublish）→ 查询发布状态 / 文章链接
+- **界面**：浅色 / 深色主题，可调节、可收起的侧栏布局
 
-## Development
+## 快速开始
 
 ```bash
 npm install
 npm start
 ```
 
-Useful checks before packaging:
+然后在浏览器打开 <http://127.0.0.1:3000>。
+
+开发模式（文件变更自动重启）：
 
 ```bash
-node --check main.js
-node --check preload.js
-node --check renderer/app.js
-node --check services/openaiClient.js
-node --check services/wechatClient.js
+npm run dev
 ```
 
-## Build Desktop Packages
-
-Build an unpacked app for the current platform:
+语法检查：
 
 ```bash
-npm run pack
+npm run check
 ```
 
-Build a distributable package for the current platform:
+## 配置
 
-```bash
-npm run dist
+打开右下角「设置」填写，或通过环境变量 / `.env`（参考 `.env.example`）配置：
+
+### AI 助手（OpenAI 兼容接口）
+
+- **API Key**：在 <https://platform.openai.com> 创建。注意：ChatGPT Plus 订阅无法直接被第三方应用调用，必须使用 API Key（按用量计费）。
+- **Base URL**（可选）：任何 OpenAI 兼容服务的地址，例如自建代理或其他供应商。
+- **模型**：默认 `gpt-5.4-mini`，可在设置或对话框中切换。
+
+### 微信公众号
+
+1. 在公众号后台「设置与开发 → 基本配置」获取 **AppID** 和 **AppSecret**
+2. 把运行本应用机器的**出口 IP** 加入「IP 白名单」
+3. 草稿箱和发布接口需要**已认证**的公众号
+
+推荐流程：上传到草稿箱 → 在公众号后台人工检查排版 → 再点「正式发布」。正式发布会直接推送给读者。
+
+## 数据存储
+
+所有数据保存在本机 `~/.wewrite-studio/`：
+
+- `data.json`：文章、对话记录、设置（含明文密钥，文件权限 600，请勿提交或共享）
+- `uploads/`：插入的图片和封面
+
+可用环境变量 `WEWRITE_DATA_DIR` 更换目录。服务默认只监听 `127.0.0.1`；如需局域网访问，设置 `HOST=0.0.0.0`，但请注意该应用没有登录鉴权，不要暴露到公网。
+
+## 项目结构
+
 ```
-
-### macOS
-
-The macOS `.app` bundles are generated under `release/` for Apple Silicon and Intel:
-
-```bash
-npm run pack:mac
+server.js               Express 服务器与 API 路由
+lib/store.js            JSON 数据存储（文章 / 设置 / 上传文件）
+lib/markdown.js         共享 Markdown 渲染器（预览 + 微信内联样式 HTML）
+services/openaiClient.js  OpenAI 兼容接口调用（流式）
+services/wechatClient.js  微信公众号 API（素材 / 草稿 / 发布 / 状态）
+public/                 前端页面
 ```
-
-To create a distributable DMG:
-
-```bash
-npm run dist:mac
-```
-
-The DMG artifacts use the shared package version, for example:
-
-```text
-release/wechat-writing-studio-0.1.18-mac-arm64.dmg
-release/wechat-writing-studio-0.1.18-mac-x64.dmg
-```
-
-### Linux
-
-The Linux unpacked app is generated in `release/linux-unpacked`:
-
-```bash
-npm run pack:linux
-```
-
-To create a Linux `.deb` installer for Debian/Ubuntu-based systems:
-
-```bash
-npm run dist:linux
-```
-
-The package is written to `release/wechat-writing-studio-<version>-linux-amd64.deb`.
-
-Install the generated package:
-
-```bash
-sudo apt install ./release/wechat-writing-studio-*-linux-*.deb
-```
-
-The installed app appears in the desktop launcher as `WeWrite Studio`.
-
-## Release Builds
-
-`package.json` is the single source of truth for the desktop app version. Keep Linux and macOS artifacts on the same version by bumping `package.json` and `package-lock.json` together, then tag the same version:
-
-```bash
-npm version 0.1.18 --no-git-tag-version
-git commit -am "Prepare 0.1.18"
-git tag v0.1.18
-git push origin main --tags
-```
-
-GitHub Actions workflows:
-
-- `Build Linux deb` builds and uploads the Debian/Ubuntu installer.
-- `Build macOS DMG` builds and uploads Apple Silicon and Intel DMG installers.
-- Pushing a tag like `v0.1.18` attaches matching Linux and macOS packages to the GitHub Release.
-
-## Configuration
-
-In the app, open Settings and fill in:
-
-- OpenAI API Key
-- OpenAI model, default `gpt-5.4-mini`
-- WeChat Official Account AppID
-- WeChat Official Account AppSecret
-
-You can also provide OpenAI credentials before launch:
-
-```bash
-export OPENAI_API_KEY="sk-..."
-export OPENAI_MODEL="gpt-5.4-mini"
-npm start
-```
-
-## WeChat Setup
-
-In the WeChat Official Account admin console, enable developer configuration and add the current machine or publishing server egress IP to the API allowlist.
-
-The app currently uses these WeChat APIs:
-
-- Get `access_token`
-- Upload permanent image asset
-- Add draft
-
-Recommended publishing flow: upload to the WeChat draft box, verify the draft in the official admin UI, then publish manually from WeChat after review.
-
-Third-party platform scan-code authorization is planned separately. It requires a public HTTPS backend and a verified WeChat Open Platform third-party platform; the desktop app alone cannot replace that server-side authorization flow.
