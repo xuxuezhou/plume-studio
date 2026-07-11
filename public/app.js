@@ -320,9 +320,12 @@ function render() {
 // ---------- saving ----------
 
 let saveTimer = null;
+let dirtyToken = 0; // Incremented on every edit; identifies which edits a save covers.
+let pendingSave = false; // A save was requested while another one was in flight.
 
 function markDirty() {
   state.dirty = true;
+  dirtyToken += 1;
   elements.saveState.textContent = 'Unsaved changes';
   window.clearTimeout(saveTimer);
   saveTimer = window.setTimeout(() => saveCurrentArticle({ quiet: true }), 900);
@@ -330,16 +333,25 @@ function markDirty() {
 
 async function saveCurrentArticle({ quiet = false } = {}) {
   const article = getEditorArticle();
-  if (!article || state.saving) return article;
+  if (!article) return article;
+  if (state.saving) {
+    // Don't drop the request: run another save once the current one finishes.
+    pendingSave = true;
+    return article;
+  }
 
   state.saving = true;
   window.clearTimeout(saveTimer);
+  const tokenAtSave = dirtyToken;
   try {
     const saved = await backend.updateArticle(article.id, article);
     const index = state.articles.findIndex((item) => item.id === saved.id);
     if (index >= 0) state.articles[index] = saved;
-    state.dirty = false;
-    elements.saveState.textContent = `Saved ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+    // Only clear the dirty flag if nothing changed while the save was in flight.
+    if (dirtyToken === tokenAtSave) {
+      state.dirty = false;
+      elements.saveState.textContent = `Saved ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+    }
     if (!quiet) {
       elements.saveButton.textContent = 'Saved';
       window.setTimeout(() => {
@@ -353,6 +365,10 @@ async function saveCurrentArticle({ quiet = false } = {}) {
     return article;
   } finally {
     state.saving = false;
+    if (pendingSave) {
+      pendingSave = false;
+      saveCurrentArticle({ quiet: true });
+    }
   }
 }
 
@@ -431,8 +447,17 @@ function buildMessageNode(message) {
     const copyButton = document.createElement('button');
     copyButton.textContent = 'Copy';
     copyButton.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(message.content);
-      copyButton.textContent = 'Copied';
+      try {
+        // navigator.clipboard is unavailable outside secure contexts (e.g. over LAN http).
+        if (!navigator.clipboard?.writeText) {
+          throw new Error('Clipboard API unavailable');
+        }
+        await navigator.clipboard.writeText(message.content);
+        copyButton.textContent = 'Copied';
+      } catch {
+        copyButton.textContent = 'Copy failed';
+        copyButton.title = 'Clipboard access is blocked here (needs HTTPS or localhost). Select the text manually.';
+      }
       window.setTimeout(() => {
         copyButton.textContent = 'Copy';
       }, 1200);

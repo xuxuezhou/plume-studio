@@ -27,6 +27,7 @@ cat > "$PLIST" <<PLIST
   <key>ProgramArguments</key>
   <array>
     <string>$NODE_BIN</string>
+    <string>--env-file-if-exists=$APP_DIR/.env</string>
     <string>$APP_DIR/server.js</string>
   </array>
   <key>WorkingDirectory</key>

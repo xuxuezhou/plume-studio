@@ -34,19 +34,21 @@ async function parseJsonResponse(response) {
   return payload;
 }
 
-// Reads an OpenAI-style SSE body ("data: {...choices[0].delta.content}") and
-// also accepts this app's own event framing ("event: delta\ndata: {text}").
+// Reads an SSE body and dispatches on the event name:
+//  - this app's server framing ("event: delta|done|error" + "data: {...}"):
+//    delta payloads are accumulated, "done" (which repeats the full text) is
+//    ignored, "error" is surfaced as a thrown Error.
+//  - OpenAI-style streams (no "event:" line, "data: {...choices[0].delta}"):
+//    handled as the default "message" event.
 async function consumeSseStream(response, onDelta) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
   let fullText = '';
   let errorMessage = '';
+  let eventName = 'message';
 
-  const handleLine = (line) => {
-    const trimmed = line.trim();
-    if (!trimmed.startsWith('data:')) return;
-    const payload = trimmed.slice(5).trim();
+  const handleData = (payload) => {
     if (!payload || payload === '[DONE]') return;
     let parsed;
     try {
@@ -54,15 +56,44 @@ async function consumeSseStream(response, onDelta) {
     } catch {
       return;
     }
-    if (parsed.message && !parsed.text && !parsed.choices) {
-      errorMessage = parsed.message;
+    if (eventName === 'error') {
+      errorMessage = parsed.message || 'The AI request failed.';
       return;
     }
-    const delta = parsed.text ?? parsed.choices?.[0]?.delta?.content ?? '';
-    // The server's final "done" event repeats the full text; skip it.
-    if (delta && delta !== fullText) {
+    if (eventName === 'done') return; // Final event repeats the full text; skip it.
+    if (eventName === 'delta') {
+      const delta = parsed.text ?? '';
+      if (delta) {
+        fullText += delta;
+        onDelta?.(delta);
+      }
+      return;
+    }
+    // Default event: an OpenAI-compatible streaming chunk.
+    if (parsed.error?.message) {
+      errorMessage = parsed.error.message;
+      return;
+    }
+    const delta = parsed.choices?.[0]?.delta?.content ?? '';
+    if (delta) {
       fullText += delta;
       onDelta?.(delta);
+    }
+  };
+
+  const handleLine = (rawLine) => {
+    const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
+    if (!line.trim()) {
+      // Blank line ends the current SSE event block.
+      eventName = 'message';
+      return;
+    }
+    if (line.startsWith('event:')) {
+      eventName = line.slice(6).trim() || 'message';
+      return;
+    }
+    if (line.startsWith('data:')) {
+      handleData(line.slice(5).trim());
     }
   };
 
