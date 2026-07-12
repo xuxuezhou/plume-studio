@@ -37,6 +37,7 @@ const Exporter = (() => {
     table{border-collapse:collapse;width:100%;margin:1.4em 0}td,th{border:1px solid #e3ded4;padding:8px 12px;text-align:left}
     hr{border:none;border-top:1px solid #e3ded4;margin:2.4em auto;width:38%}
     .callout{display:flex;gap:10px;background:#f3f0e8;border:1px solid #e3ded4;border-radius:8px;padding:14px 16px;margin:1.4em 0}
+    .callout-icon{flex:none;padding-top:3px;color:#6f695e}.callout-body{flex:1;min-width:0}
     .reader-gallery{display:grid;gap:10px;margin:1.6em 0}.gallery-grid2{grid-template-columns:1fr 1fr}.gallery-grid3,.gallery-grid{grid-template-columns:1fr 1fr 1fr}
     .reader-gallery figure{margin:0}.reader-columns{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:1.4em 0}
     .reader-math{text-align:center;font-family:Georgia,serif;font-style:italic;margin:1.6em 0;white-space:pre-wrap}

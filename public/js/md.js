@@ -284,6 +284,18 @@ const MD = (() => {
 
   // ---------- blocks -> reading html ----------
 
+  // Self-contained stroke icons for callouts (also embedded in exported HTML).
+  const CALLOUT_ICONS = {
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/>',
+    tip: '<path d="M9 17a6.5 6.5 0 1 1 6 0"/><path d="M9.5 17h5M10 20.5h4"/>',
+    warning: '<path d="M12 4 2.5 20h19z"/><path d="M12 10v4"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/>',
+    danger: '<circle cx="12" cy="12" r="9"/><path d="M12 7v6"/><circle cx="12" cy="16.5" r="1" fill="currentColor" stroke="none"/>',
+    note: '<path d="M9 4h6l1 7 3 3H5l3-3z"/><path d="M12 14v6"/>'
+  };
+
+  const calloutIcon = (variant) =>
+    `<span class="callout-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CALLOUT_ICONS[variant] || CALLOUT_ICONS.info}</svg></span>`;
+
   function imageFigure(b, resolveSrc, itemOverride) {
     const item = itemOverride || b;
     const src = resolveSrc(item.src || '');
@@ -350,7 +362,7 @@ const MD = (() => {
           break;
         }
         case 'quote': out.push(`<blockquote>${b.text || ''}</blockquote>`); break;
-        case 'callout': out.push(`<div class="callout callout-${b.variant || 'info'}"><div class="callout-body">${b.text || ''}</div></div>`); break;
+        case 'callout': out.push(`<div class="callout callout-${b.variant || 'info'}">${calloutIcon(b.variant)}<div class="callout-body">${b.text || ''}</div></div>`); break;
         case 'toggle': out.push(`<details class="reader-toggle"><summary>${escapeHtml(b.summary || '详情')}</summary><div>${b.text || ''}</div></details>`); break;
         case 'divider': out.push('<hr>'); break;
         case 'code': out.push(`<pre class="reader-code"><code>${escapeHtml(b.code || '')}</code></pre>`); break;

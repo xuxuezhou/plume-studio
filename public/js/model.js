@@ -56,17 +56,17 @@ const Store = (() => {
   };
 
   const BUILTIN_TEMPLATES = [
-    { name: '日记', icon: '📔', desc: '记录今天的所见所感', status: 'draft', md: '## 今天\n\n\n\n## 想法\n\n\n\n## 明天\n\n' },
-    { name: '读书笔记', icon: '📚', desc: '书名、金句与思考', status: 'draft', md: '> [!info] 书名 / 作者 / 阅读日期\n\n## 核心观点\n\n\n\n## 印象最深的段落\n\n> \n\n## 我的思考\n\n' },
-    { name: '论文笔记', icon: '📄', desc: '结构化拆解一篇论文', status: 'writing', md: '> [!info] 标题 / 作者 / 会议年份 / 链接\n\n## 问题与动机\n\n\n\n## 方法\n\n\n\n## 实验\n\n\n\n## 我的评价\n\n\n\n## 可借鉴之处\n\n' },
-    { name: '实验记录', icon: '🧪', desc: '目标、设置、结果与结论', status: 'writing', md: '## 实验目标\n\n\n\n## 设置\n\n- 模型:\n- 数据:\n- 超参数:\n\n## 结果\n\n| 指标 | 数值 |\n| --- | --- |\n|  |  |\n\n## 结论\n\n\n\n## 下一步\n\n- [ ] ' },
-    { name: '周报', icon: '🗓️', desc: '本周进展与下周计划', status: 'draft', md: '## 本周完成\n\n- \n\n## 遇到的问题\n\n- \n\n## 下周计划\n\n- [ ] ' },
-    { name: '旅行记录', icon: '🧭', desc: '路线、见闻与照片', status: 'draft', md: '## 行程\n\n\n\n## 见闻\n\n\n\n## 照片\n\n\n\n## 小结\n\n' },
-    { name: '摄影故事', icon: '📷', desc: '以图为主的叙事文章', status: 'draft', md: '拍摄地点与时间。\n\n---\n\n\n\n---\n\n后记。' },
-    { name: '访谈稿', icon: '🎙️', desc: '问答式访谈整理', status: 'writing', md: '> [!note] 受访者 / 时间 / 地点\n\n**问:**\n\n答:\n\n**问:**\n\n答:\n\n## 后记\n\n' },
-    { name: '产品需求文档', icon: '📐', desc: '背景、目标、方案、验收', status: 'writing', md: '## 背景\n\n\n\n## 目标与非目标\n\n\n\n## 方案\n\n\n\n## 里程碑\n\n- [ ] \n\n## 验收标准\n\n- [ ] ' },
-    { name: '长篇文章', icon: '✍️', desc: '引言、论点、案例与结语', status: 'writing', md: '引言:为什么要写这篇文章。\n\n## 一\n\n\n\n## 二\n\n\n\n## 三\n\n\n\n## 结语\n\n' },
-    { name: '年度总结', icon: '🎇', desc: '回顾一年,展望来年', status: 'draft', md: '## 关键词\n\n\n\n## 做成的事\n\n\n\n## 遗憾\n\n\n\n## 明年\n\n- [ ] ' }
+    { name: '日记', icon: 'notebook', desc: '记录今天的所见所感', status: 'draft', md: '## 今天\n\n\n\n## 想法\n\n\n\n## 明天\n\n' },
+    { name: '读书笔记', icon: 'bookOpen', desc: '书名、金句与思考', status: 'draft', md: '> [!info] 书名 / 作者 / 阅读日期\n\n## 核心观点\n\n\n\n## 印象最深的段落\n\n> \n\n## 我的思考\n\n' },
+    { name: '论文笔记', icon: 'file', desc: '结构化拆解一篇论文', status: 'writing', md: '> [!info] 标题 / 作者 / 会议年份 / 链接\n\n## 问题与动机\n\n\n\n## 方法\n\n\n\n## 实验\n\n\n\n## 我的评价\n\n\n\n## 可借鉴之处\n\n' },
+    { name: '实验记录', icon: 'flask', desc: '目标、设置、结果与结论', status: 'writing', md: '## 实验目标\n\n\n\n## 设置\n\n- 模型:\n- 数据:\n- 超参数:\n\n## 结果\n\n| 指标 | 数值 |\n| --- | --- |\n|  |  |\n\n## 结论\n\n\n\n## 下一步\n\n- [ ] ' },
+    { name: '周报', icon: 'calendar', desc: '本周进展与下周计划', status: 'draft', md: '## 本周完成\n\n- \n\n## 遇到的问题\n\n- \n\n## 下周计划\n\n- [ ] ' },
+    { name: '旅行记录', icon: 'compass', desc: '路线、见闻与照片', status: 'draft', md: '## 行程\n\n\n\n## 见闻\n\n\n\n## 照片\n\n\n\n## 小结\n\n' },
+    { name: '摄影故事', icon: 'camera', desc: '以图为主的叙事文章', status: 'draft', md: '拍摄地点与时间。\n\n---\n\n\n\n---\n\n后记。' },
+    { name: '访谈稿', icon: 'mic', desc: '问答式访谈整理', status: 'writing', md: '> [!note] 受访者 / 时间 / 地点\n\n**问:**\n\n答:\n\n**问:**\n\n答:\n\n## 后记\n\n' },
+    { name: '产品需求文档', icon: 'ruler', desc: '背景、目标、方案、验收', status: 'writing', md: '## 背景\n\n\n\n## 目标与非目标\n\n\n\n## 方案\n\n\n\n## 里程碑\n\n- [ ] \n\n## 验收标准\n\n- [ ] ' },
+    { name: '长篇文章', icon: 'feather', desc: '引言、论点、案例与结语', status: 'writing', md: '引言:为什么要写这篇文章。\n\n## 一\n\n\n\n## 二\n\n\n\n## 三\n\n\n\n## 结语\n\n' },
+    { name: '年度总结', icon: 'chart', desc: '回顾一年,展望来年', status: 'draft', md: '## 关键词\n\n\n\n## 做成的事\n\n\n\n## 遗憾\n\n\n\n## 明年\n\n- [ ] ' }
   ];
 
   // ---------- helpers ----------
@@ -120,6 +120,7 @@ const Store = (() => {
 
     if (!meta.settings) await firstRun();
     await migrateLegacy();
+    await migrateEmojiIcons();
     await purgeExpiredTrash();
     state.ready = true;
     emit();
@@ -128,9 +129,9 @@ const Store = (() => {
   async function firstRun() {
     // starter categories
     const mk = (name, icon, parentId = '') => ({ id: MD.uid('cat'), name, icon, color: '', parentId, order: state.categories.length, description: '' });
-    const creation = mk('创作', '✏️');
-    const life = mk('生活', '🌿');
-    const research = mk('研究', '🔬');
+    const creation = mk('创作', 'feather');
+    const life = mk('生活', 'leaf');
+    const research = mk('研究', 'flask');
     state.categories.push(creation, life, research, mk('随笔', '', creation.id), mk('日记', '', life.id), mk('论文笔记', '', research.id));
 
     state.templates = BUILTIN_TEMPLATES.map((t) => ({
@@ -163,6 +164,31 @@ const Store = (() => {
       PlumeDB.put('articles', welcome),
       saveMeta('categories'), saveMeta('templates'), saveMeta('settings')
     ]);
+  }
+
+  // Earlier builds stored emoji as category/template icons; convert them to
+  // line-icon names (unknown emoji simply drop back to the default icon).
+  async function migrateEmojiIcons() {
+    const MAP = {
+      '✏️': 'pen', '📝': 'pen', '✍️': 'feather', '🌿': 'leaf', '🔬': 'flask', '🧪': 'flask',
+      '📔': 'notebook', '📚': 'bookOpen', '📄': 'file', '🗓️': 'calendar', '🧭': 'compass',
+      '📷': 'camera', '🎙️': 'mic', '📐': 'ruler', '🎇': 'chart', '📊': 'chart', '💡': 'bulb',
+      '🎨': 'pen', '🎵': 'music', '🏔️': 'mountain', '☕': 'coffee', '🍜': 'coffee',
+      '🚀': 'sparkle', '❤️': 'heart', '🧠': 'bulb', '🗂️': 'folder', '🌙': 'moon', '⭐': 'star'
+    };
+    let catsDirty = false;
+    let tplsDirty = false;
+    const fix = (item) => {
+      if (item.icon && /[^\x20-\x7E]/.test(item.icon)) {
+        item.icon = MAP[item.icon] || '';
+        return true;
+      }
+      return false;
+    };
+    for (const c of state.categories) if (fix(c)) catsDirty = true;
+    for (const t of state.templates) if (fix(t)) tplsDirty = true;
+    if (catsDirty) await saveMeta('categories');
+    if (tplsDirty) await saveMeta('templates');
   }
 
   // Import articles from the pre-rebuild localStorage store, once.
@@ -508,7 +534,7 @@ const Store = (() => {
   async function saveTemplate(tpl) {
     const existing = state.templates.find((t) => t.id === tpl.id);
     if (existing) Object.assign(existing, tpl);
-    else state.templates.push({ id: MD.uid('tpl'), name: '未命名模板', icon: '📄', description: '', blocks: [MD.block('p')], defaults: {}, ...tpl });
+    else state.templates.push({ id: MD.uid('tpl'), name: '未命名模板', icon: 'file', description: '', blocks: [MD.block('p')], defaults: {}, ...tpl });
     await saveMeta('templates');
     emit();
   }
@@ -524,7 +550,7 @@ const Store = (() => {
     if (!a) return null;
     const tpl = {
       id: MD.uid('tpl'),
-      name: a.title || '未命名模板', icon: '📄', description: a.digest || '',
+      name: a.title || '未命名模板', icon: 'file', description: a.digest || '',
       blocks: JSON.parse(JSON.stringify(a.blocks || [])),
       defaults: { status: a.status, categoryId: a.categoryId, tags: [...(a.tags || [])], theme: a.theme }
     };

@@ -104,7 +104,7 @@ const Views = (() => {
     const items = [{ label: '未分类', onClick: () => onPick('') }, { sep: true }];
     const walk = (parentId, depth) => {
       for (const cat of Store.childCategories(parentId)) {
-        items.push({ label: `${'    '.repeat(depth)}${cat.icon ? `${cat.icon} ` : ''}${cat.name}`, onClick: () => onPick(cat.id) });
+        items.push({ label: `${'    '.repeat(depth)}${cat.name}`, onClick: () => onPick(cat.id) });
         walk(cat.id, depth + 1);
       }
     };
@@ -318,10 +318,10 @@ const Views = (() => {
 
         <section class="dash-quick">
           <button class="quick-btn primary" data-q="blank">${UI.icon('plus')} 新建空白文章</button>
-          <button class="quick-btn" data-q="diary">📔 日记</button>
-          <button class="quick-btn" data-q="essay">✏️ 随笔</button>
-          <button class="quick-btn" data-q="long">✍️ 长文</button>
-          <button class="quick-btn" data-q="series">📚 系列文章</button>
+          <button class="quick-btn" data-q="diary">${UI.icon('notebook', 15)} 日记</button>
+          <button class="quick-btn" data-q="essay">${UI.icon('pen', 15)} 随笔</button>
+          <button class="quick-btn" data-q="long">${UI.icon('feather', 15)} 长文</button>
+          <button class="quick-btn" data-q="series">${UI.icon('bookOpen', 15)} 系列文章</button>
           <button class="quick-btn" data-q="template">${UI.icon('template', 15)} 从模板创建</button>
         </section>
 
@@ -398,7 +398,7 @@ const Views = (() => {
     const renderTree = (parentId, depth) => Store.childCategories(parentId).map((c) => `
       <div class="cat-row" data-cat="${c.id}" draggable="true" style="--depth:${depth}">
         <span class="cat-drag">${UI.icon('grip', 14)}</span>
-        <button class="cat-icon" data-c="icon" title="设置图标">${c.icon || UI.icon('folder', 15)}</button>
+        <button class="cat-icon" data-c="icon" title="设置图标">${c.icon ? UI.entityIcon(c.icon, 15) : UI.icon('folder', 15)}</button>
         <button class="cat-name${c.color ? ` c-${c.color}-text` : ''}" data-c="open">${esc(c.name)}</button>
         ${c.description ? `<span class="hint cat-desc">${esc(c.description)}</span>` : ''}
         <span class="cat-count">${countOf(c.id)}</span>
@@ -443,7 +443,7 @@ const Views = (() => {
       }
       if (!cat) return;
       if (act === 'open') navigate(`#/category/${cat.id}`);
-      if (act === 'icon') UI.emojiPick(e.target.closest('[data-c]'), (emoji) => Store.saveCategory({ ...cat, icon: emoji }));
+      if (act === 'icon') UI.iconPick(e.target.closest('[data-c]'), (icon) => Store.saveCategory({ ...cat, icon }));
       if (act === 'add') {
         const name = await UI.prompt(`在「${cat.name}」下新建子分类`, { placeholder: '子分类名称' });
         if (name) Store.saveCategory({ name, parentId: cat.id });
@@ -846,7 +846,7 @@ const Views = (() => {
       <p class="hint page-hint">从模板创建文章可以预设内容结构、分类、标签和状态。也可以在编辑器菜单里把现有文章「存为模板」。</p>
       <div class="tpl-grid">
         ${tpls.map((t) => `<div class="tpl-card" data-tpl="${t.id}">
-          <span class="tpl-icon">${t.icon || '📄'}</span>
+          <span class="tpl-icon">${UI.entityIcon(t.icon, 20, 'file')}</span>
           <b>${esc(t.name)}</b>
           <span class="hint">${esc(t.description || '')}</span>
           <div class="tpl-acts">
@@ -874,10 +874,10 @@ const Views = (() => {
 
   function editTemplate(tpl) {
     const isNew = !tpl;
-    const data = tpl ? JSON.parse(JSON.stringify(tpl)) : { name: '', icon: '📄', description: '', blocks: [MD.block('p')], defaults: {} };
+    const data = tpl ? JSON.parse(JSON.stringify(tpl)) : { name: '', icon: 'file', description: '', blocks: [MD.block('p')], defaults: {} };
     const body = UI.el(`<div class="form-col">
       <div class="form-row">
-        <button class="btn tpl-icon-btn" data-te="icon">${data.icon || '📄'}</button>
+        <button class="btn tpl-icon-btn" data-te="icon">${UI.entityIcon(data.icon, 17, 'file')}</button>
         <input class="input" data-te="name" placeholder="模板名称" value="${esc(data.name)}" style="flex:1">
       </div>
       <input class="input input-sm" data-te="desc" placeholder="一句话描述" value="${esc(data.description || '')}">
@@ -895,7 +895,8 @@ const Views = (() => {
     </div>`);
     body.querySelector('.tpl-tags').appendChild(UI.tagEditor(data.defaults?.tags || [], (tags) => { data.defaults.tags = tags; }));
     body.querySelector('[data-te="icon"]').addEventListener('click', (e) => {
-      UI.emojiPick(e.currentTarget, (emoji) => { data.icon = emoji || '📄'; e.target.textContent = data.icon; });
+      const btn = e.currentTarget;
+      UI.iconPick(btn, (icon) => { data.icon = icon || 'file'; btn.innerHTML = UI.entityIcon(data.icon, 17, 'file'); });
     });
     UI.modal({
       title: isNew ? '新建模板' : `编辑模板「${tpl.name}」`, body, width: 620,

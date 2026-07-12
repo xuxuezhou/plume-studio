@@ -56,7 +56,25 @@ const UI = (() => {
     rotate: '<path d="M21 8a9 9 0 1 0 .5 5"/><path d="M21 3v5h-5"/>',
     crop: '<path d="M7 3v14a1 1 0 0 0 1 1h13"/><path d="M3 7h14a1 1 0 0 1 1 1v13"/>',
     external: '<path d="M14 4h6v6"/><path d="m20 4-9 9"/><path d="M19 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6"/>',
-    graph: '<circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="9" r="2.4"/><circle cx="9" cy="18" r="2.4"/><path d="m8.2 7 7.5 1.4M7 8.2l1.4 7.5M16.4 10.8l-5.6 5.6"/>'
+    graph: '<circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="9" r="2.4"/><circle cx="9" cy="18" r="2.4"/><path d="m8.2 7 7.5 1.4M7 8.2l1.4 7.5M16.4 10.8l-5.6 5.6"/>',
+    feather: '<path d="M20 4c-5.5 0-11 3-13 9l-3 7 7-3c6-2.5 9-7.5 9-13z"/><path d="M16 8 6 18"/>',
+    leaf: '<path d="M5 19C5 9 12 4 20 4c0 8-5 15-15 15z"/><path d="M5 19c3-6 7-9 11-11"/>',
+    flask: '<path d="M10 3v6l-5.5 9a2 2 0 0 0 1.7 3h11.6a2 2 0 0 0 1.7-3L14 9V3"/><path d="M8 3h8M7.5 14h9"/>',
+    notebook: '<rect x="5" y="3" width="15" height="18" rx="2"/><path d="M9 3v18M13 8h4M13 12h4"/>',
+    compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
+    camera: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/>',
+    mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+    ruler: '<path d="m3 17 14-14 4 4L7 21z"/><path d="m8.5 8.5 1.5 1.5M11.5 5.5l1.5 1.5M5.5 11.5l1.5 1.5"/>',
+    chart: '<path d="M4 20v-7M10 20V6M16 20v-10M4 20h17"/>',
+    coffee: '<path d="M4 8h12v7a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><path d="M16 9h2a2.5 2.5 0 0 1 0 5h-2M7 4v2M11 4v2"/>',
+    mountain: '<path d="m3 19 6-11 4 7 3-4 5 8z"/><circle cx="17" cy="6" r="1.6"/>',
+    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18-3-3-3-15 0-18z"/>',
+    music: '<path d="M9 18V5l10-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
+    heart: '<path d="M12 20 5 13a4.4 4.4 0 0 1 6.2-6.2l.8.8.8-.8A4.4 4.4 0 1 1 19 13z"/>',
+    bulb: '<path d="M9 17a6.5 6.5 0 1 1 6 0"/><path d="M9.5 17h5M10 20.5h4"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/>',
+    warning: '<path d="M12 4 2.5 20h19z"/><path d="M12 10v4"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/>',
+    danger: '<circle cx="12" cy="12" r="9"/><path d="M12 7v6"/><circle cx="12" cy="16.5" r="1" fill="currentColor" stroke="none"/>'
   };
 
   const icon = (name, size = 18) =>
@@ -373,16 +391,27 @@ const UI = (() => {
     return wrap;
   }
 
-  // small emoji picker for category / template icons
-  const EMOJI = ['📝', '📔', '📚', '📄', '🧪', '🗓️', '🧭', '📷', '🎙️', '📐', '✍️', '🎇', '💡', '🔬', '🌿', '✏️', '📊', '🎨', '🎵', '🏔️', '🍜', '☕', '🚀', '❤️', '🧠', '🗂️', '🌙', '⭐'];
+  // line-icon picker for category / template icons (stores the icon name)
+  const ICON_CHOICES = [
+    'pen', 'feather', 'notebook', 'bookOpen', 'file', 'calendar', 'flask', 'compass',
+    'camera', 'mic', 'ruler', 'chart', 'coffee', 'mountain', 'globe', 'leaf',
+    'music', 'heart', 'bulb', 'star', 'moon', 'sun', 'folder', 'tag',
+    'layers', 'image', 'sparkle', 'target', 'clock', 'home'
+  ];
 
-  function emojiPick(anchor, onPick) {
-    const node = el('<div class="menu emoji-grid"></div>');
-    node.appendChild(el('<button class="emoji-cell" data-emoji="">∅</button>'));
-    for (const e of EMOJI) node.appendChild(el(`<button class="emoji-cell" data-emoji="${e}">${e}</button>`));
+  // render a stored entity icon name; unknown/legacy values fall back to a default
+  const entityIcon = (name, size = 15, fallback = 'folder') =>
+    icon(PATHS[name] ? name : fallback, size);
+
+  function iconPick(anchor, onPick) {
+    const node = el('<div class="menu icon-grid"></div>');
+    node.appendChild(el('<button class="icon-cell" data-pick="" title="无图标">∅</button>'));
+    for (const name of ICON_CHOICES) {
+      node.appendChild(el(`<button class="icon-cell" data-pick="${name}">${icon(name, 16)}</button>`));
+    }
     node.addEventListener('click', (e) => {
-      const cell = e.target.closest('[data-emoji]');
-      if (cell) { closeMenu(); onPick(cell.dataset.emoji); }
+      const cell = e.target.closest('[data-pick]');
+      if (cell) { closeMenu(); onPick(cell.dataset.pick); }
     });
     closeMenu();
     document.body.appendChild(node);
@@ -404,6 +433,6 @@ const UI = (() => {
     toast, menu, closeMenu, modal,
     confirm: confirmDialog, prompt: promptDialog,
     download, pickFiles, readAsText, blobToDataUrl,
-    COLOR_NAMES, statusPill, tagChip, colorPicker, tagEditor, emojiPick
+    COLOR_NAMES, statusPill, tagChip, colorPicker, tagEditor, iconPick, entityIcon
   };
 })();

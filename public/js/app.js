@@ -29,7 +29,7 @@ const App = (() => {
       return `<div class="cat-node" style="--depth:${depth}">
         <div class="nav-item cat-nav${active ? ' active' : ''}" data-cat-nav="${c.id}">
           <button class="cat-caret${children.length ? '' : ' empty'}${isOpen ? ' open' : ''}" data-caret="${c.id}">${UI.icon('chevronRight', 12)}</button>
-          <span class="cat-node-icon">${c.icon || UI.icon('folder', 14)}</span>
+          <span class="cat-node-icon">${c.icon ? UI.entityIcon(c.icon, 14) : UI.icon('folder', 14)}</span>
           <span class="cat-node-name${c.color ? ` c-${c.color}-text` : ''}">${UI.esc(c.name)}</span>
           ${count ? `<span class="nav-count">${count}</span>` : ''}
         </div>

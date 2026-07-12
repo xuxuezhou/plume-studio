@@ -13,8 +13,8 @@ const Editor = (() => {
   };
 
   const CALLOUT_META = {
-    info: { icon: 'ℹ️', name: '信息' }, tip: { icon: '💡', name: '提示' },
-    warning: { icon: '⚠️', name: '注意' }, danger: { icon: '⛔', name: '警告' }, note: { icon: '📌', name: '备注' }
+    info: { icon: 'info', name: '信息' }, tip: { icon: 'bulb', name: '提示' },
+    warning: { icon: 'warning', name: '注意' }, danger: { icon: 'danger', name: '警告' }, note: { icon: 'pin', name: '备注' }
   };
 
   // ---------- caret helpers ----------
@@ -374,7 +374,7 @@ const Editor = (() => {
     }
 
     function renderBlock(b) {
-      const wrap = UI.el(`<div class="eb eb-${b.type}" data-id="${b.id}" data-type="${b.type}">${gutterHtml()}<div class="eb-body"></div></div>`);
+      const wrap = UI.el(`<div class="eb ebt-${b.type}" data-id="${b.id}" data-type="${b.type}">${gutterHtml()}<div class="eb-body"></div></div>`);
       const body = wrap.querySelector('.eb-body');
       if (b.align && b.align !== 'left') body.style.textAlign = b.align;
 
@@ -407,10 +407,10 @@ const Editor = (() => {
         }
         case 'callout': {
           const meta = CALLOUT_META[b.variant] || CALLOUT_META.info;
-          const iconBtn = UI.el(`<button class="eb-callout-icon" contenteditable="false" title="切换类型">${meta.icon}</button>`);
+          const iconBtn = UI.el(`<button class="eb-callout-icon" contenteditable="false" title="切换类型">${UI.icon(meta.icon, 15)}</button>`);
           iconBtn.addEventListener('click', () => {
             UI.menu(iconBtn, Object.entries(CALLOUT_META).map(([variant, m]) => ({
-              label: `${m.icon} ${m.name}`, checked: b.variant === variant,
+              label: m.name, icon: m.icon, checked: b.variant === variant,
               onClick: () => { b.variant = variant; replaceBlockEl(b); changed({ structural: true }); }
             })));
           });
@@ -1343,7 +1343,7 @@ const Editor = (() => {
       const walk = (parentId, depth) => {
         for (const cat of Store.childCategories(parentId)) {
           items.push({
-            label: `${'    '.repeat(depth)}${cat.icon ? `${cat.icon} ` : ''}${cat.name}`,
+            label: `${'    '.repeat(depth)}${cat.name}`,
             checked: article.categoryId === cat.id,
             onClick: () => setMeta({ categoryId: cat.id })
           });
