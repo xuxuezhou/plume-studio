@@ -1015,7 +1015,8 @@ const Views = (() => {
 
         <section>
           <h3>数据</h3>
-          <p class="hint">所有数据保存在本机浏览器(IndexedDB)中,不会上传到任何服务器。建议定期备份。</p>
+          <p class="hint">所有数据只保存在本机浏览器(IndexedDB)中,不会上传到 GitHub 仓库或任何服务器。文章文本另有一份 localStorage 应急备份,数据库被意外清空时会自动恢复(图片除外)。建议定期手动导出完整备份。</p>
+          <p class="hint storage-status">正在检查存储状态…</p>
           <div class="set-links">
             <button class="btn btn-sm btn-primary" data-set="backup">${UI.icon('download', 14)} 导出完整备份</button>
             <button class="btn btn-sm" data-set="restore">${UI.icon('upload', 14)} 从备份恢复</button>
@@ -1039,6 +1040,22 @@ const Views = (() => {
         if (input.dataset.s === 'uiTheme') App.applyUiTheme();
       });
     });
+
+    // storage protection + usage (async)
+    (async () => {
+      const node = container.querySelector('.storage-status');
+      if (!node) return;
+      const bits = [];
+      try {
+        const persisted = await navigator.storage?.persisted?.();
+        bits.push(persisted ? '存储保护:已开启(浏览器不会自动清除本站数据)' : '存储保护:未开启(长期不访问时浏览器可能回收存储,请注意备份)');
+      } catch { /* unsupported */ }
+      try {
+        const est = await navigator.storage?.estimate?.();
+        if (est?.usage != null) bits.push(`当前占用 ${UI.fmtBytes(est.usage)}`);
+      } catch { /* unsupported */ }
+      node.textContent = bits.join(' · ') || '';
+    })();
 
     container.onclick = async (e) => {
       const del = e.target.closest('[data-cs-del]');

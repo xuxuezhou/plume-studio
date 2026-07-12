@@ -20,8 +20,53 @@ const Store = (() => {
   };
 
   const listeners = new Set();
-  const emit = () => listeners.forEach((fn) => fn());
+  const emit = () => {
+    listeners.forEach((fn) => fn());
+    if (state.ready) saveRescueSoon();
+  };
   const on = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
+
+  // ---------- rescue cache ----------
+  // A second, text-only copy of all articles in localStorage. If IndexedDB is
+  // ever evicted or cleared while localStorage survives, articles (minus
+  // image binaries) are restored automatically on next launch.
+
+  const RESCUE_KEY = 'plume-rescue';
+  let rescueTimer = null;
+
+  function saveRescueSoon() {
+    clearTimeout(rescueTimer);
+    rescueTimer = setTimeout(() => {
+      try {
+        localStorage.setItem(RESCUE_KEY, JSON.stringify({
+          ts: Date.now(),
+          articles: state.articles,
+          categories: state.categories,
+          tags: state.tags,
+          collections: state.collections,
+          links: state.links,
+          paths: state.paths
+        }));
+      } catch { /* quota exceeded — rescue copy is best-effort */ }
+    }, 2500);
+  }
+
+  async function restoreFromRescue() {
+    let rescue = null;
+    try { rescue = JSON.parse(localStorage.getItem(RESCUE_KEY) || 'null'); } catch { /* ignore */ }
+    if (!rescue?.articles?.length) return false;
+    for (const a of rescue.articles) {
+      state.articles.push(a);
+      await PlumeDB.put('articles', a);
+    }
+    state.categories = rescue.categories || state.categories;
+    state.tags = rescue.tags || state.tags;
+    state.collections = rescue.collections || state.collections;
+    state.links = rescue.links || state.links;
+    state.paths = rescue.paths || state.paths;
+    for (const id of ['categories', 'tags', 'collections', 'links', 'paths']) await saveMeta(id);
+    return true;
+  }
 
   // ---------- built-ins ----------
 
@@ -118,12 +163,24 @@ const Store = (() => {
     state.paths = meta.paths?.items || [];
     state.dailyStats = meta.dailyStats?.items || {};
 
-    if (!meta.settings) await firstRun();
+    // IndexedDB came up empty but the localStorage rescue copy has content:
+    // the database was evicted/cleared — bring the articles back.
+    let rescued = false;
+    if (state.articles.length === 0) rescued = await restoreFromRescue();
+
+    if (!meta.settings && !rescued) await firstRun();
+    else if (!meta.settings) await saveMeta('settings');
     await migrateLegacy();
     await migrateEmojiIcons();
     await purgeExpiredTrash();
+
+    // ask the browser to protect this origin's storage from eviction
+    try { navigator.storage?.persist?.(); } catch { /* unsupported */ }
+
     state.ready = true;
     emit();
+    saveRescueSoon();
+    return { rescued };
   }
 
   async function firstRun() {

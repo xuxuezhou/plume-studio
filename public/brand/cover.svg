@@ -1,22 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-label="Plume Studio — a quiet desk for writing, refining, and publishing">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1c0a12"/>
-      <stop offset="0.55" stop-color="#3a1224"/>
-      <stop offset="1" stop-color="#6d1a3d"/>
+      <stop offset="0" stop-color="#141b17"/>
+      <stop offset="0.55" stop-color="#22332c"/>
+      <stop offset="1" stop-color="#44695b"/>
     </linearGradient>
     <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ff7da6" stop-opacity="0.85"/>
-      <stop offset="1" stop-color="#c46280" stop-opacity="0.25"/>
+      <stop offset="0" stop-color="#8fb3a3" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#5e8474" stop-opacity="0.25"/>
     </linearGradient>
     <linearGradient id="feather" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ffe3ec"/>
-      <stop offset="0.5" stop-color="#ff9dbd"/>
-      <stop offset="1" stop-color="#e2557f"/>
+      <stop offset="0" stop-color="#faf9f6"/>
+      <stop offset="0.5" stop-color="#cfe0d7"/>
+      <stop offset="1" stop-color="#7fa895"/>
     </linearGradient>
     <radialGradient id="halo" cx="0.72" cy="0.38" r="0.6">
-      <stop offset="0" stop-color="#ff7da6" stop-opacity="0.22"/>
-      <stop offset="1" stop-color="#ff7da6" stop-opacity="0"/>
+      <stop offset="0" stop-color="#8fb3a3" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#8fb3a3" stop-opacity="0"/>
     </radialGradient>
   </defs>
 
@@ -48,11 +48,11 @@
     <!-- rachis highlight -->
     <path d="M228 52 C 160 140, 110 250, 78 296" fill="none" stroke="#fff" stroke-opacity="0.5" stroke-width="3" stroke-linecap="round"/>
     <!-- nib -->
-    <path d="M14 434 L 2 466 L 34 452 Z" fill="#ffd9e5"/>
+    <path d="M14 434 L 2 466 L 34 452 Z" fill="#d7e3dc"/>
   </g>
 
   <!-- sparkles -->
-  <g fill="#ffd9e5">
+  <g fill="#d7e3dc">
     <path d="M1050 120 l4 12 12 4 -12 4 -4 12 -4 -12 -12 -4 12 -4 Z" fill-opacity="0.9"/>
     <path d="M1150 260 l3 9 9 3 -9 3 -3 9 -3 -9 -9 -3 9 -3 Z" fill-opacity="0.6"/>
     <path d="M980 330 l2.5 7.5 7.5 2.5 -7.5 2.5 -2.5 7.5 -2.5 -7.5 -7.5 -2.5 7.5 -2.5 Z" fill-opacity="0.5"/>
@@ -60,24 +60,24 @@
 
   <!-- wordmark -->
   <g font-family="Georgia, 'Times New Roman', serif">
-    <text x="96" y="150" fill="#ffd9e5" font-size="26" letter-spacing="10" font-family="Inter, -apple-system, 'Helvetica Neue', Arial, sans-serif" font-weight="600">A  QUIET  DESK  FOR  WRITERS</text>
-    <text x="90" y="290" fill="#fff8fa" font-size="118" font-weight="bold" letter-spacing="2">Plume Studio</text>
-    <text x="96" y="368" fill="#e8b8c8" font-size="34" font-style="italic">Write, refine, and publish — beautifully.</text>
+    <text x="96" y="150" fill="#d7e3dc" font-size="26" letter-spacing="10" font-family="Inter, -apple-system, 'Helvetica Neue', Arial, sans-serif" font-weight="600">A  QUIET  DESK  FOR  WRITERS</text>
+    <text x="90" y="290" fill="#faf9f6" font-size="118" font-weight="bold" letter-spacing="2">Plume Studio</text>
+    <text x="96" y="368" fill="#a9c4b8" font-size="34" font-style="italic">Write, organize, and connect — locally.</text>
   </g>
 
   <!-- footer chips -->
   <g font-family="Inter, -apple-system, 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600">
     <g>
-      <rect x="96" y="560" rx="19" width="196" height="38" fill="#ffffff" fill-opacity="0.08" stroke="#ff9dbd" stroke-opacity="0.45"/>
-      <text x="118" y="586" fill="#ffd9e5">Markdown editor</text>
+      <rect x="96" y="560" rx="19" width="196" height="38" fill="#ffffff" fill-opacity="0.08" stroke="#cfe0d7" stroke-opacity="0.45"/>
+      <text x="118" y="586" fill="#d7e3dc">Block editor</text>
     </g>
     <g>
-      <rect x="312" y="560" rx="19" width="176" height="38" fill="#ffffff" fill-opacity="0.08" stroke="#ff9dbd" stroke-opacity="0.45"/>
-      <text x="334" y="586" fill="#ffd9e5">AI co-writing</text>
+      <rect x="312" y="560" rx="19" width="176" height="38" fill="#ffffff" fill-opacity="0.08" stroke="#cfe0d7" stroke-opacity="0.45"/>
+      <text x="334" y="586" fill="#d7e3dc">Local-first</text>
     </g>
     <g>
-      <rect x="508" y="560" rx="19" width="256" height="38" fill="#ffffff" fill-opacity="0.08" stroke="#ff9dbd" stroke-opacity="0.45"/>
-      <text x="530" y="586" fill="#ffd9e5">One-click publishing</text>
+      <rect x="508" y="560" rx="19" width="256" height="38" fill="#ffffff" fill-opacity="0.08" stroke="#cfe0d7" stroke-opacity="0.45"/>
+      <text x="530" y="586" fill="#d7e3dc">Knowledge graph</text>
     </g>
   </g>
 </svg>

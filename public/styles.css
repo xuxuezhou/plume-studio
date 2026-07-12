@@ -1136,7 +1136,7 @@ body.focus-mode .sidebar { display: none; }
    ============================================================ */
 
 .graph-shell { position: relative; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
-.graph-shell.mode-dark { background: #141317; }
+.graph-shell.mode-dark { background: #0e1016; }
 .graph-toolbar {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--bg);

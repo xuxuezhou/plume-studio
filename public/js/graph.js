@@ -4,10 +4,10 @@
  * hierarchy / path.
  */
 const Graph = (() => {
-  const SETTINGS_KEY = 'plume-graph';
+  const SETTINGS_KEY = 'plume-graph-v2';
 
   const defaults = {
-    mode: 'paper',        // paper | dark
+    mode: 'dark',         // dark (星空) | paper
     layout: 'force',      // force | cluster | timeline | hierarchy | path
     showCats: true,
     showTags: false,
@@ -29,7 +29,7 @@ const Graph = (() => {
       panel: '#f3f1ea', selRect: 'rgba(68,105,91,0.1)'
     },
     dark: {
-      bg: '#141317', edge: 'rgba(200,195,210,0.16)', edgeLit: 'rgba(222,140,120,0.8)',
+      bg: '#0e1016', edge: 'rgba(200,195,210,0.16)', edgeLit: 'rgba(222,140,120,0.8)',
       label: '#e6e2d8', labelDim: '#77737c', halo: 'rgba(222,140,120,0.2)',
       article: '#c4756a', idea: '#a795c4', category: '#d99a62', tag: '#6f6a76', collection: '#7fa0c4',
       panel: '#1c1b20', selRect: 'rgba(222,140,120,0.08)'
@@ -399,6 +399,33 @@ const Graph = (() => {
       canvas.height = rect.height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       view.w = rect.width; view.h = rect.height;
+      makeStars();
+    }
+
+    // static star field for the night-sky mode (no animation — quiet by design)
+    function makeStars() {
+      const count = Math.round((view.w * view.h) / 3800);
+      view.stars = Array.from({ length: count }, () => ({
+        x: Math.random() * view.w,
+        y: Math.random() * view.h,
+        r: Math.random() < 0.88 ? 0.4 + Math.random() * 0.8 : 1.1 + Math.random() * 0.9,
+        a: 0.12 + Math.random() * 0.55,
+        depth: 0.03 + Math.random() * 0.07  // subtle parallax with panning
+      }));
+    }
+
+    function drawStars() {
+      if (!view.stars) makeStars();
+      ctx.fillStyle = '#e8ecf4';
+      for (const st of view.stars) {
+        const x = (st.x + view.x * view.zoom * st.depth % view.w + view.w) % view.w;
+        const y = (st.y + view.y * view.zoom * st.depth % view.h + view.h) % view.h;
+        ctx.globalAlpha = st.a;
+        ctx.beginPath();
+        ctx.arc(x, y, st.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
 
     const toScreen = (x, y) => [view.w / 2 + (x + view.x) * view.zoom, view.h / 2 + (y + view.y) * view.zoom];
@@ -409,6 +436,7 @@ const Graph = (() => {
       ctx.clearRect(0, 0, view.w, view.h);
       ctx.fillStyle = P.bg;
       ctx.fillRect(0, 0, view.w, view.h);
+      if (S.mode === 'dark') drawStars();
 
       // timeline axis
       if (view.timeAxis) {
@@ -1038,8 +1066,8 @@ const Graph = (() => {
       if (g === 'settings') {
         UI.menu(anchor, [
           { header: '视觉模式' },
+          { label: '暗色星图(星空)', checked: S.mode === 'dark', onClick: () => { S.mode = 'dark'; save(); syncToolbar(); } },
           { label: '纸张地图(暖白)', checked: S.mode === 'paper', onClick: () => { S.mode = 'paper'; save(); syncToolbar(); } },
-          { label: '暗色星图(深黑)', checked: S.mode === 'dark', onClick: () => { S.mode = 'dark'; save(); syncToolbar(); } },
           { sep: true },
           { header: '显示内容' },
           { label: '分类节点', checked: S.showCats, onClick: () => { S.showCats = !S.showCats; save(); buildGraph(); } },

@@ -232,7 +232,10 @@ const App = (() => {
     els.sidebar.addEventListener('click', onSidebarClick);
 
     try {
-      await Store.init();
+      const result = await Store.init();
+      if (result?.rescued) {
+        setTimeout(() => UI.toast('检测到本地数据库被清空,已从应急备份恢复文章(图片除外)', 'success'), 600);
+      }
     } catch (err) {
       els.main.innerHTML = `<div class="empty-state"><h2>无法启动</h2><p>${UI.esc(err.message)}</p><p class="hint">请确认浏览器允许使用本地存储(IndexedDB),隐私/无痕模式可能不可用。</p></div>`;
       return;
