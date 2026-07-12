@@ -6,7 +6,7 @@
 
 **Plume Studio** 是一个适合长期写作、整理内容和沉淀个人知识的现代化写作工作台。它完全运行在浏览器本地(IndexedDB),**不需要任何账号、服务器或 API**,打开即用。
 
-- **在线使用**:<https://xuxuezhou.github.io/wechat-writing-studio/>(GitHub Pages,永久地址)
+- **在线使用**:<https://xuxuezhou.github.io/plume-studio/>(GitHub Pages,永久地址)
 - 也可部署到 Vercel,或本地直接打开 `public/index.html` 同样可用
 
 当前版本:`1.0.0`。
