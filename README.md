@@ -1,104 +1,70 @@
 <p align="center">
-  <img src="public/brand/cover.svg" alt="Plume Studio — Write, refine, and publish, beautifully." width="100%" />
+  <img src="public/brand/cover.svg" alt="Plume Studio" width="100%" />
 </p>
 
-# Plume Studio
+# Plume Studio · 写作工作台
 
-**Plume Studio** is a web-based writing desk for WeChat Official Account articles: write in your browser, refine with an AI co-writer, then upload to the WeChat draft box and publish in one click.
+**Plume Studio** 是一个适合长期写作、整理内容和沉淀个人知识的现代化写作工作台。它完全运行在浏览器本地(IndexedDB),**不需要任何账号、服务器或 API**,打开即用。
 
-- **Public site**: <https://plume-studio.vercel.app> — runs entirely in your browser (drafts live in localStorage, bring your own AI key); WeChat publishing is disabled there
-- **Self-hosted**: <http://localhost:5757> — full features including WeChat publishing (see below)
+- **在线使用**:<https://xuxuezhou.github.io/wechat-writing-studio/>(GitHub Pages,永久地址)
+- 也可部署到 Vercel,或本地直接打开 `public/index.html` 同样可用
 
-Current version: `0.4.0`.
+当前版本:`1.0.0`。
 
-## Features
+## 核心能力
 
-- **Draft library** — create / save / delete / search, autosave with a status indicator, saved-time labels
-- **Paper-style editor** — Markdown writing with live preview, character count, and image insertion via button, drag-and-drop, or paste
-- **AI co-writer** — streaming chat whose history is saved per article; quick actions for outline, titles, rewrite, digest, and review; replies can be inserted straight into the draft; reference files can be attached
-- **WeChat publishing** (self-hosted only):
-  - Cover upload as permanent material
-  - Local images in the body are auto-uploaded to the WeChat CDN and their URLs rewritten
-  - Publish-ready HTML is generated with inline styles (the WeChat editor strips classes and external CSS)
-  - Upload to draft box → publish (freepublish) → check publish status / article link
-- **Interface** — light / dark theme (follows the system), resizable and collapsible side panels
+### ✍️ 写作
+- **块级编辑器**——段落悬停出现拖拽手柄与 + 插入按钮;支持标题、引用、列表、待办、提示块、折叠内容、表格、代码块、数学公式、双栏布局
+- **Markdown 快捷输入**(`# ` 标题、`- ` 列表、`> ` 引用、`---` 分割线等)与浮动格式工具栏
+- **专注模式**——隐藏一切干扰,支持打字机滚动;自动保存 + 本地崩溃恢复 + 版本历史(可对比差异、恢复、命名版本)
 
-## Two modes, one codebase
+### 🖼 图片与排版
+- 拖拽 / 粘贴 / 批量上传;裁剪、旋转、圆角、边框、阴影、衬底
+- 布局:居中、突出版心、全宽、左右浮动;双图 / 三图 / 网格 / 瀑布流 / 轮播 / 前后对比
+- 图片标题、说明、来源、拍摄时间地点、Alt 文本
+- **独立素材库**——按时间 / 文件夹 / 标签 / 使用情况筛选,查看图片被哪些文章引用,替换原图不破坏引用
 
-| | Public site (Vercel) | Self-hosted |
-|---|---|---|
-| Storage | Browser localStorage | `~/.wewrite-studio/` on disk |
-| AI assistant | Browser → OpenAI-compatible API with your key | Proxied through the local server |
-| WeChat publishing | Not available (WeChat requires a fixed, allowlisted server IP) | Fully supported |
-| Your keys | Never leave your browser | Never leave your machine |
+### 🗂 内容组织
+- **多级分类**(拖拽排序、图标、颜色、合并)+ 主分类 / 辅助分类
+- **标签系统**(颜色、合并、使用统计、自动补全、批量打标)
+- **合集与系列**(封面、章节、拖拽排序、完成进度、整体导出)
+- **智能视图**——按状态 / 标签 / 字数 / 更新时间等组合筛选,保存到侧边栏
+- 文章状态(灵感 → 草稿 → 写作中 → 待修改 → 已完成 → 已归档,可自定义)、优先级、截止日期、目标字数
 
-The frontend detects the mode automatically: if `/api/data` responds, it uses the server; otherwise it switches to browser mode.
+### 🌌 思维星图(Knowledge Graph)
+- 文章、分类、标签、合集、灵感的全屏可交互关系网络
+- 正文输入 `[[文章标题]]` 建立**双向链接**,自动显示反向链接
+- 八种关系类型(引用 / 延伸 / 前置阅读 / 补充 / 对比 / 反驳 / 同项目 / 自定义);拖节点到节点快速建立关系
+- 五种布局:自由星图、分类聚类、时间轴、层级图、思维路径
+- **思维路径**——为一组文章建立有方向的阅读 / 推理顺序,支持逐节点播放
+- 聚焦模式(1 层 / 2 层 / 完整)、基于标签分类关键词的本地关联推荐(无需 AI)
+- 暗色星图 / 纸张地图两种视觉模式
 
-## Quick start (self-hosted)
+### 📖 阅读与导出
+- 独立阅读模式:自动目录、上一篇 / 下一篇、九种排版主题(极简白、现代杂志、学术论文、文艺随笔、摄影图文、新闻报道、深色阅读、中文书刊、个人博客)
+- 导入:Markdown / TXT / HTML / Word (.docx) / 剪贴板,支持批量
+- 导出:Markdown / HTML / PDF / Word / 纯文本 / 长图,可选包含封面、署名、目录等
+- **复制排版结果**(富文本)——粘贴到微信公众号、知乎等任意平台
+- 一键完整 JSON 备份与恢复
 
-```bash
-npm install
-npm start
-```
+## 数据与隐私
 
-Then open <http://localhost:5757>.
+所有文章、图片、分类和设置都存储在**本机浏览器的 IndexedDB** 中,不会上传到任何服务器。建议在设置页定期导出备份。
 
-### Permanent URL (macOS service)
+## 本地运行
 
-```bash
-npm run service:install
-```
-
-After this, **http://localhost:5757** is always available: the server starts at login and restarts automatically if it crashes. Remove with `npm run service:uninstall`.
-
-Development mode (auto-restart on changes): `npm run dev`. Syntax checks: `npm run check`.
-
-## Configuration
-
-Open **Settings** in the app (bottom-left gear), or use environment variables / `.env` (see `.env.example`):
-
-### AI assistant (OpenAI-compatible)
-
-- **API key** — create one at <https://platform.openai.com>. Note: a ChatGPT Plus subscription cannot be used by third-party apps; the API key is billed by usage.
-- **Base URL** (optional) — any OpenAI-compatible endpoint, e.g. a self-hosted proxy or another provider.
-- **Model** — defaults to `gpt-5.4-mini`; switch it in Settings or in the chat composer.
-
-### WeChat Official Account (self-hosted only)
-
-1. Get the **AppID** and **AppSecret** from Settings & Development → Basic Configuration in the WeChat admin console
-2. Add this machine's **egress IP** to the IP allowlist
-3. Draft and publish APIs require a **verified** account
-
-Recommended flow: upload to the draft box → review in the WeChat admin console → then publish. Publishing pushes the article to readers immediately.
-
-## Data storage (self-hosted)
-
-Everything lives in `~/.wewrite-studio/`:
-
-- `data.json` — articles, chat history, settings (contains plaintext keys, file mode 600; do not commit or share)
-- `uploads/` — inserted images and covers
-- `plume-studio.log` — service log
-
-Set `WEWRITE_DATA_DIR` to change the location. The server binds to `127.0.0.1` by default; set `HOST=0.0.0.0` for LAN access, but note there is no login — do not expose it to the public internet.
-
-## Deployment
-
-The public site is a static deployment of `public/` (see `vercel.json`):
+纯静态站点,无构建步骤:
 
 ```bash
-vercel deploy --prod
+# 任选其一
+npx serve public
+# 或
+python3 -m http.server -d public 5757
 ```
 
-## Project structure
+仓库中保留了早期版本的 Express 服务端(`server.js`,含微信公众号发布与 AI 代理接口),当前产品不依赖它;如需可自行研究 `services/` 下的实现。
 
-```
-server.js                  Express server and API routes (self-hosted mode)
-lib/store.js               JSON data store (articles / settings / uploads)
-public/                    Frontend (also deployed standalone to Vercel)
-  backend.js               Backend abstraction: server API vs. in-browser store
-  shared/markdown.js       Shared Markdown renderer (preview + WeChat inline-styled HTML)
-  brand/cover.svg          Cover art
-services/openaiClient.js   OpenAI-compatible API client (streaming)
-services/wechatClient.js   WeChat Official Account API (material / draft / publish / status)
-scripts/                   macOS LaunchAgent install / uninstall
-```
+## 技术说明
+
+- 无框架、无构建:原生 JavaScript + IndexedDB + Canvas
+- 部署:推送到 `main` 后由 GitHub Actions 自动发布到 GitHub Pages
