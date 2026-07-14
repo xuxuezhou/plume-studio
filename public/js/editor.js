@@ -1395,12 +1395,28 @@ const Editor = (() => {
     // auto-hide: the bar disappears a few seconds after it stops being used;
     // hovering it keeps it open
     let fmtbarTimer = 0;
+    let dismissedSel = ''; // text of a selection the user clicked away — never re-show for it
     const armFmtbarTimer = () => {
       clearTimeout(fmtbarTimer);
       fmtbarTimer = setTimeout(() => { fmtbar.hidden = true; }, 4000);
     };
     fmtbar.addEventListener('mouseenter', () => clearTimeout(fmtbarTimer));
     fmtbar.addEventListener('mouseleave', armFmtbarTimer);
+
+    // watchdog: while the bar is visible, re-validate the selection every
+    // 500ms — hides the bar even if no selectionchange/pointer event ever
+    // reaches us (belt-and-braces for environments we can't reproduce)
+    let fmtbarWatch = 0;
+    const stopFmtbarWatch = () => { clearInterval(fmtbarWatch); fmtbarWatch = 0; };
+    const startFmtbarWatch = () => {
+      if (fmtbarWatch) return;
+      fmtbarWatch = setInterval(() => {
+        if (fmtbar.hidden) { stopFmtbarWatch(); return; }
+        const s = window.getSelection();
+        const alive = s.rangeCount && !s.isCollapsed && s.anchorNode && shell.contains(s.anchorNode);
+        if (!alive || (dismissedSel && s.toString() === dismissedSel)) { fmtbar.hidden = true; stopFmtbarWatch(); }
+      }, 500);
+    };
 
     fmtbar.addEventListener('mousedown', (e) => e.preventDefault());
     fmtbar.addEventListener('click', async (e) => {
@@ -1441,9 +1457,11 @@ const Editor = (() => {
 
     function updateFmtbar() {
       const sel = window.getSelection();
+      if (!sel.rangeCount || sel.isCollapsed) dismissedSel = ''; // selection gone → dismissal spent
       const within = sel.rangeCount && !sel.isCollapsed && sel.anchorNode && shell.contains(sel.anchorNode) &&
         (sel.anchorNode.parentElement?.closest('.eb-text') || sel.anchorNode.parentElement?.closest('.editor-title'));
       if (!within || sel.anchorNode.parentElement?.closest('.editor-title')) { fmtbar.hidden = true; return; }
+      if (dismissedSel && sel.toString() === dismissedSel) { fmtbar.hidden = true; return; }
       const rect = sel.getRangeAt(0).getBoundingClientRect();
       if (!rect.width && !rect.height) { fmtbar.hidden = true; return; }
       // hide once the selection has scrolled out of the editor viewport
@@ -1451,6 +1469,7 @@ const Editor = (() => {
       if (rect.bottom < sr.top || rect.top > sr.bottom) { fmtbar.hidden = true; return; }
       fmtbar.hidden = false;
       armFmtbarTimer();
+      startFmtbarWatch();
       const x = Math.min(Math.max(8, rect.left + rect.width / 2 - fmtbar.offsetWidth / 2), window.innerWidth - fmtbar.offsetWidth - 8);
       fmtbar.style.left = `${x}px`;
       fmtbar.style.top = `${Math.max(8, rect.top - fmtbar.offsetHeight - 8)}px`;
@@ -1469,10 +1488,21 @@ const Editor = (() => {
       // modals/menus (the link dialog needs the live selection) and
       // shift-click (extends the selection).
       if (e.shiftKey || e.target.closest?.('#modalRoot, .menu')) return;
+      // fires twice per click (pointerdown + mousedown) — written to be idempotent:
+      // a live selection is recorded as dismissed and cleared; once it is gone
+      // the dismissal is spent so re-selecting the same text shows the bar again
       const sel = window.getSelection();
-      if (sel.rangeCount && !sel.isCollapsed && els.blocks.contains(sel.anchorNode)) sel.removeAllRanges();
+      if (sel.rangeCount && !sel.isCollapsed) {
+        dismissedSel = sel.toString(); // even if clearing fails, never re-show for this selection
+        if (els.blocks.contains(sel.anchorNode)) sel.removeAllRanges();
+      } else {
+        dismissedSel = '';
+      }
     };
-    document.addEventListener('pointerdown', onDocPointerDown);
+    // capture phase on both pointerdown and mousedown: no other handler's
+    // stopPropagation can starve the dismissal
+    document.addEventListener('pointerdown', onDocPointerDown, true);
+    document.addEventListener('mousedown', onDocPointerDown, true);
     els.scroll.addEventListener('scroll', () => { if (!fmtbar.hidden) updateFmtbar(); }, { passive: true });
 
     // ---------- title / meta events ----------
@@ -1978,7 +2008,9 @@ const Editor = (() => {
     inst.destroy = () => {
       inst.destroyed = true;
       document.removeEventListener('selectionchange', onSelChange);
-      document.removeEventListener('pointerdown', onDocPointerDown);
+      document.removeEventListener('pointerdown', onDocPointerDown, true);
+      document.removeEventListener('mousedown', onDocPointerDown, true);
+      stopFmtbarWatch();
       document.removeEventListener('paste', onDocPaste, true);
       document.removeEventListener('keydown', onDocDeleteKey, true);
       document.removeEventListener('cut', onDocCut, true);
