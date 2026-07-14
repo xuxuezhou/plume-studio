@@ -1309,7 +1309,10 @@ const Editor = (() => {
     document.addEventListener('selectionchange', onSelChange);
     // dismiss the toolbar as soon as a new interaction starts elsewhere, and
     // keep it pinned to the selection while scrolling
-    const onDocPointerDown = (e) => { if (!fmtbar.hidden && !fmtbar.contains(e.target)) fmtbar.hidden = true; };
+    const onDocPointerDown = (e) => {
+      lastSelectAllBlock = ''; // clicking breaks the two-stage select-all sequence
+      if (!fmtbar.hidden && !fmtbar.contains(e.target)) fmtbar.hidden = true;
+    };
     document.addEventListener('pointerdown', onDocPointerDown);
     els.scroll.addEventListener('scroll', () => { if (!fmtbar.hidden) updateFmtbar(); }, { passive: true });
 
@@ -1741,15 +1744,18 @@ const Editor = (() => {
     });
 
     // keyboard shortcuts
+    let lastSelectAllBlock = ''; // block id whose contents the previous Cmd/Ctrl+A selected
     const onKeydown = (e) => {
       const meta = e.metaKey || e.ctrlKey;
+      const isSelectAll = meta && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'a';
+      // any non-modifier key other than the select-all chord breaks the two-stage sequence
+      if (!isSelectAll && !['Meta', 'Control', 'Shift', 'Alt'].includes(e.key)) lastSelectAllBlock = '';
       if (meta && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
       if (meta && e.key.toLowerCase() === 's') { e.preventDefault(); persist(); setSaveState('saving'); }
       if (meta && e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); toggleFocus(); }
       // Cmd/Ctrl+A is two-stage in the body: first press selects the current
-      // block (native), a second press (block already fully selected) escalates
-      // to selecting the whole body across all blocks.
-      if (meta && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'a') {
+      // block (native), a second press escalates to the whole body across blocks.
+      if (isSelectAll) {
         const ae = document.activeElement;
         if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
         const sel = window.getSelection();
@@ -1759,6 +1765,10 @@ const Editor = (() => {
         if (!inBody || inTitle) return; // native behaviour in title / inputs
         const selectAllBody = () => {
           e.preventDefault();
+          lastSelectAllBlock = '';
+          // an anchor inside a contenteditable pins the selection to that block
+          // in Chrome/WebKit — blur it first so the range may span all blocks
+          if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
           const range = document.createRange();
           range.selectNodeContents(els.blocks);
           sel.removeAllRanges();
@@ -1767,15 +1777,17 @@ const Editor = (() => {
         const node = anchor && (anchor.nodeType === 1 ? anchor : anchor.parentNode);
         const textEl = node?.closest?.('.eb-text');
         if (!textEl) { selectAllBody(); return; } // already spanning blocks → keep whole body
-        // escalate when this block is empty or its full contents are already selected
-        const full = document.createRange();
-        full.selectNodeContents(textEl);
-        const r = sel.rangeCount ? sel.getRangeAt(0) : null;
-        const blockFull = r && !sel.isCollapsed &&
-          r.compareBoundaryPoints(Range.START_TO_START, full) <= 0 &&
-          r.compareBoundaryPoints(Range.END_TO_END, full) >= 0;
-        if (blockFull || !textEl.textContent.trim()) selectAllBody();
-        // otherwise let the native Cmd/Ctrl+A select just this block
+        const blockId = textEl.closest('.eb')?.dataset.id || '';
+        // escalate when: second consecutive press on the same block, the block's
+        // text is already fully selected, or the block is empty
+        const norm = (s) => s.replace(/\s+/g, '');
+        const blockFull = !sel.isCollapsed && norm(sel.toString()) !== '' && norm(sel.toString()) === norm(textEl.textContent);
+        if ((blockId && lastSelectAllBlock === blockId) || blockFull || !textEl.textContent.trim()) {
+          selectAllBody();
+          return;
+        }
+        // first press: let the native Cmd/Ctrl+A select just this block
+        lastSelectAllBlock = blockId;
         return;
       }
       if (e.key === 'Escape' && !fmtbar.hidden) { fmtbar.hidden = true; return; }
