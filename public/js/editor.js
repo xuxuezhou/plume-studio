@@ -128,7 +128,11 @@ const Editor = (() => {
         </div>
         <aside class="editor-panel" hidden></aside>
       </div>
-      <div class="editor-footbar"><span class="efb-stats"></span></div>
+      <div class="editor-footbar">
+        <span class="efb-stats"></span>
+        <span class="efb-voice-status" hidden></span>
+        <button class="icon-btn efb-mic" title="语音写作(右键换语言)">${UI.icon('mic', 15)}</button>
+      </div>
     </div>`);
     container.appendChild(shell);
 
@@ -1508,6 +1512,134 @@ const Editor = (() => {
     document.addEventListener('mousedown', onDocPointerDown, true);
     els.scroll.addEventListener('scroll', () => { if (!fmtbar.hidden) updateFmtbar(); }, { passive: true });
 
+    // ---------- voice dictation (Web Speech API) ----------
+
+    const micBtn = shell.querySelector('.efb-mic');
+    const voiceStatus = shell.querySelector('.efb-voice-status');
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let rec = null;
+    let voiceOn = false;
+    let voiceTarget = null; // last focused text block — dictation goes here
+
+    els.blocks.addEventListener('focusin', (e) => {
+      const t = e.target.closest?.('.eb-text');
+      if (t) voiceTarget = t;
+    });
+
+    // spoken punctuation for Chinese dictation (Chrome doesn't auto-punctuate zh)
+    const VOICE_PUNCT = [
+      [/句号/g, '。'], [/逗号/g, ','], [/顿号/g, '、'], [/问号/g, '?'],
+      [/感叹号/g, '!'], [/冒号/g, ':'], [/分号/g, ';'], [/省略号/g, '……'],
+    ];
+    const VOICE_BREAK = /(换行|新段落|另起一段)/;
+
+    function ensureVoiceTarget() {
+      const sel = window.getSelection();
+      const anchorEl = sel.anchorNode && (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement);
+      let t = anchorEl?.closest?.('.eb-text');
+      if (t && els.blocks.contains(t) && document.activeElement === t) { voiceTarget = t; return t; }
+      t = voiceTarget && els.blocks.contains(voiceTarget) ? voiceTarget : null;
+      if (!t) {
+        let last = article.blocks[article.blocks.length - 1];
+        if (!last || !TEXT_TYPES.has(last.type)) {
+          const nb = MD.block('p');
+          insertBlock(nb, last?.id);
+          last = nb;
+        }
+        t = els.blocks.querySelector(`[data-id="${last.id}"] .eb-text`);
+      }
+      if (!t) return null;
+      if (document.activeElement !== t) {
+        const b = getBlock(t.closest('.eb')?.dataset.id);
+        setCaret(t, MD.plainText(b?.text || '').length);
+      }
+      voiceTarget = t;
+      return t;
+    }
+
+    function voiceNewParagraph() {
+      const t = ensureVoiceTarget();
+      const b = t && getBlock(t.closest('.eb')?.dataset.id);
+      const nb = MD.block('p');
+      const el = insertBlock(nb, b?.id);
+      const nt = el.querySelector('.eb-text');
+      setCaret(nt, 0);
+      voiceTarget = nt;
+    }
+
+    function voiceInsert(raw) {
+      for (const part of raw.split(VOICE_BREAK)) {
+        if (!part) continue;
+        if (VOICE_BREAK.test(part) && part.length <= 4) { voiceNewParagraph(); continue; }
+        let out = part;
+        if ((Store.state.settings.voiceLang || 'zh-CN').startsWith('zh')) {
+          for (const [re, ch] of VOICE_PUNCT) out = out.replace(re, ch);
+        }
+        if (!ensureVoiceTarget()) return;
+        document.execCommand('insertText', false, out); // fires input → model sync
+      }
+    }
+
+    function setVoiceUi(interim = '') {
+      micBtn.classList.toggle('recording', voiceOn);
+      voiceStatus.hidden = !voiceOn;
+      if (voiceOn) voiceStatus.textContent = interim ? `“${interim}”` : '聆听中…(说"句号""新段落"控制标点分段)';
+    }
+
+    function startVoice() {
+      if (!SR) { UI.toast('当前浏览器不支持语音识别,请使用 Chrome / Edge / Safari', 'error'); return; }
+      rec = new SR();
+      rec.lang = Store.state.settings.voiceLang || 'zh-CN';
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.onresult = (e) => {
+        let interim = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const r = e.results[i];
+          if (r.isFinal) voiceInsert(r[0].transcript);
+          else interim += r[0].transcript;
+        }
+        setVoiceUi(interim);
+      };
+      rec.onerror = (e) => {
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+          UI.toast('无法访问麦克风,请在浏览器中允许麦克风权限', 'error');
+          stopVoice();
+        } else if (e.error === 'network') {
+          UI.toast('语音服务连接失败(语音识别需要联网)', 'error');
+          stopVoice();
+        } // no-speech / aborted → onend auto-restarts
+      };
+      rec.onend = () => { if (voiceOn && rec) { try { rec.start(); } catch {} } }; // keep listening after silence
+      voiceOn = true;
+      try { rec.start(); } catch {}
+      ensureVoiceTarget();
+      setVoiceUi();
+    }
+
+    function stopVoice() {
+      voiceOn = false;
+      if (rec) { rec.onend = null; try { rec.stop(); } catch {} rec = null; }
+      setVoiceUi();
+    }
+
+    micBtn.addEventListener('mousedown', (e) => e.preventDefault()); // keep focus in the block
+    micBtn.addEventListener('click', () => (voiceOn ? stopVoice() : startVoice()));
+    micBtn.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const cur = Store.state.settings.voiceLang || 'zh-CN';
+      const pick = (lang, label) => ({ label, checked: cur === lang, onClick: () => {
+        Store.saveSettings({ voiceLang: lang });
+        UI.toast(`语音识别语言:${label}`);
+        if (voiceOn) { stopVoice(); startVoice(); }
+      } });
+      UI.menu(micBtn, [
+        { header: '识别语言' },
+        pick('zh-CN', '中文(普通话)'),
+        pick('en-US', 'English (US)'),
+      ], { align: 'right' });
+    });
+
     // ---------- title / meta events ----------
 
     els.title.addEventListener('input', () => {
@@ -1982,6 +2114,7 @@ const Editor = (() => {
         lastSelectAllBlock = blockId;
         return;
       }
+      if (e.key === 'Escape' && voiceOn) { stopVoice(); return; }
       if (e.key === 'Escape' && !fmtbar.hidden) { fmtbar.hidden = true; return; }
       if (e.key === 'Escape' && inst.focusMode) toggleFocus(false);
     };
@@ -2010,6 +2143,7 @@ const Editor = (() => {
 
     inst.destroy = () => {
       inst.destroyed = true;
+      stopVoice();
       document.removeEventListener('selectionchange', onSelChange);
       document.removeEventListener('pointerdown', onDocPointerDown, true);
       document.removeEventListener('mousedown', onDocPointerDown, true);

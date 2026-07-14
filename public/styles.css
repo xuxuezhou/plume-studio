@@ -767,8 +767,20 @@ select.input, select.input-sm { cursor: pointer; }
   flex: none; padding: 6px 16px;
   border-top: 1px solid var(--border); background: var(--bg);
   transition: opacity .3s;
+  display: flex; align-items: center; gap: 10px;
 }
-.efb-stats { font-size: 11.5px; color: var(--text-3); }
+.efb-stats { font-size: 11.5px; color: var(--text-3); flex: 1; min-width: 0; }
+.efb-voice-status {
+  font-size: 11.5px; color: var(--accent-text); max-width: 45%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.efb-mic { flex: none; position: relative; }
+.efb-mic.recording { color: var(--danger); }
+.efb-mic.recording::after {
+  content: ''; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px;
+  border-radius: 50%; background: var(--danger); animation: mic-pulse 1.2s ease-in-out infinite;
+}
+@keyframes mic-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(1.5); } }
 
 .editor-tail { min-height: 120px; cursor: text; }
 
