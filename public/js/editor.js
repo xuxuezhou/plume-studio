@@ -1297,6 +1297,9 @@ const Editor = (() => {
       if (!within || sel.anchorNode.parentElement?.closest('.editor-title')) { fmtbar.hidden = true; return; }
       const rect = sel.getRangeAt(0).getBoundingClientRect();
       if (!rect.width && !rect.height) { fmtbar.hidden = true; return; }
+      // hide once the selection has scrolled out of the editor viewport
+      const sr = els.scroll.getBoundingClientRect();
+      if (rect.bottom < sr.top || rect.top > sr.bottom) { fmtbar.hidden = true; return; }
       fmtbar.hidden = false;
       const x = Math.min(Math.max(8, rect.left + rect.width / 2 - fmtbar.offsetWidth / 2), window.innerWidth - fmtbar.offsetWidth - 8);
       fmtbar.style.left = `${x}px`;
@@ -1304,6 +1307,11 @@ const Editor = (() => {
     }
     const onSelChange = UI.debounce(updateFmtbar, 120);
     document.addEventListener('selectionchange', onSelChange);
+    // dismiss the toolbar as soon as a new interaction starts elsewhere, and
+    // keep it pinned to the selection while scrolling
+    const onDocPointerDown = (e) => { if (!fmtbar.hidden && !fmtbar.contains(e.target)) fmtbar.hidden = true; };
+    document.addEventListener('pointerdown', onDocPointerDown);
+    els.scroll.addEventListener('scroll', () => { if (!fmtbar.hidden) updateFmtbar(); }, { passive: true });
 
     // ---------- title / meta events ----------
 
@@ -1738,6 +1746,39 @@ const Editor = (() => {
       if (meta && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
       if (meta && e.key.toLowerCase() === 's') { e.preventDefault(); persist(); setSaveState('saving'); }
       if (meta && e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); toggleFocus(); }
+      // Cmd/Ctrl+A is two-stage in the body: first press selects the current
+      // block (native), a second press (block already fully selected) escalates
+      // to selecting the whole body across all blocks.
+      if (meta && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'a') {
+        const ae = document.activeElement;
+        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+        const sel = window.getSelection();
+        const anchor = sel.anchorNode;
+        const inTitle = els.title.contains(anchor) || document.activeElement === els.title;
+        const inBody = (ae?.closest?.('.eb-text') && els.blocks.contains(ae)) || (anchor && els.blocks.contains(anchor));
+        if (!inBody || inTitle) return; // native behaviour in title / inputs
+        const selectAllBody = () => {
+          e.preventDefault();
+          const range = document.createRange();
+          range.selectNodeContents(els.blocks);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        };
+        const node = anchor && (anchor.nodeType === 1 ? anchor : anchor.parentNode);
+        const textEl = node?.closest?.('.eb-text');
+        if (!textEl) { selectAllBody(); return; } // already spanning blocks → keep whole body
+        // escalate when this block is empty or its full contents are already selected
+        const full = document.createRange();
+        full.selectNodeContents(textEl);
+        const r = sel.rangeCount ? sel.getRangeAt(0) : null;
+        const blockFull = r && !sel.isCollapsed &&
+          r.compareBoundaryPoints(Range.START_TO_START, full) <= 0 &&
+          r.compareBoundaryPoints(Range.END_TO_END, full) >= 0;
+        if (blockFull || !textEl.textContent.trim()) selectAllBody();
+        // otherwise let the native Cmd/Ctrl+A select just this block
+        return;
+      }
+      if (e.key === 'Escape' && !fmtbar.hidden) { fmtbar.hidden = true; return; }
       if (e.key === 'Escape' && inst.focusMode) toggleFocus(false);
     };
     shell.addEventListener('keydown', onKeydown);
@@ -1766,6 +1807,7 @@ const Editor = (() => {
     inst.destroy = () => {
       inst.destroyed = true;
       document.removeEventListener('selectionchange', onSelChange);
+      document.removeEventListener('pointerdown', onDocPointerDown);
       fmtbar.remove();
       wikiBox.remove();
       document.body.classList.remove('focus-mode');
