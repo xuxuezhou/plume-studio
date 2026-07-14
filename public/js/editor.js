@@ -1458,9 +1458,11 @@ const Editor = (() => {
     function updateFmtbar() {
       const sel = window.getSelection();
       if (!sel.rangeCount || sel.isCollapsed) dismissedSel = ''; // selection gone → dismissal spent
-      const within = sel.rangeCount && !sel.isCollapsed && sel.anchorNode && shell.contains(sel.anchorNode) &&
-        (sel.anchorNode.parentElement?.closest('.eb-text') || sel.anchorNode.parentElement?.closest('.editor-title'));
-      if (!within || sel.anchorNode.parentElement?.closest('.editor-title')) { fmtbar.hidden = true; return; }
+      // the anchor may be a text node or the editable element itself (Firefox dblclick)
+      const anchorEl = sel.anchorNode && (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement);
+      const within = sel.rangeCount && !sel.isCollapsed && anchorEl && shell.contains(anchorEl) &&
+        (anchorEl.closest('.eb-text') || anchorEl.closest('.editor-title'));
+      if (!within || anchorEl.closest('.editor-title')) { fmtbar.hidden = true; return; }
       if (dismissedSel && sel.toString() === dismissedSel) { fmtbar.hidden = true; return; }
       const rect = sel.getRangeAt(0).getBoundingClientRect();
       if (!rect.width && !rect.height) { fmtbar.hidden = true; return; }
