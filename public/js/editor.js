@@ -1228,20 +1228,47 @@ const Editor = (() => {
       const html = e.clipboardData?.getData('text/html') || '';
       e.preventDefault();
 
-      // multi-line paste into a paragraph → parse as markdown blocks
+      // multi-line paste into a paragraph → parse as markdown blocks,
+      // replacing the selection and splitting at the caret
       if (plain.includes('\n') && b.type === 'p' && !text.classList.contains('eb-col') && !text.classList.contains('eb-toggle-summary')) {
         const parsed = MD.parse(plain);
         if (parsed.length) {
-          let anchor = b.id;
-          if (!text.textContent.trim()) {
-            // replace current empty paragraph with first parsed block
-            const first = parsed.shift();
+          const sel = window.getSelection();
+          if (sel.rangeCount && !sel.isCollapsed && text.contains(sel.anchorNode)) document.execCommand('delete');
+          const [before, after] = splitAtCaret(text);
+          let rest = parsed;
+          const firstP = parsed[0];
+          if (firstP.type === 'p') {
+            // first pasted line merges with the text before the caret
+            b.text = MD.sanitizeInline(before + (firstP.text || ''));
+            rest = parsed.slice(1);
+          } else if (!MD.plainText(before).trim()) {
+            // caret at block start: the block becomes the first parsed block
             Object.keys(b).filter((k) => k !== 'id').forEach((k) => delete b[k]);
-            Object.assign(b, first, { id: b.id });
-            replaceBlockEl(b);
+            Object.assign(b, firstP, { id: b.id });
+            rest = parsed.slice(1);
+          } else {
+            b.text = MD.sanitizeInline(before);
           }
-          for (const nb of parsed) { insertBlock(nb, anchor); anchor = nb.id; }
+          replaceBlockEl(b);
+          let anchor = b.id;
+          for (const nb of rest) { insertBlock(nb, anchor); anchor = nb.id; }
+          // last pasted line merges with the text after the caret
+          const lastB = rest.length ? rest[rest.length - 1] : b;
+          const caretAt = MD.plainText(TEXT_TYPES.has(lastB.type) ? lastB.text || '' : '').length;
+          if (MD.plainText(after).trim()) {
+            if (TEXT_TYPES.has(lastB.type)) {
+              lastB.text = MD.sanitizeInline((lastB.text || '') + after);
+              replaceBlockEl(lastB);
+            } else {
+              const p = MD.block('p');
+              p.text = MD.sanitizeInline(after);
+              insertBlock(p, anchor);
+            }
+          }
           changed({ structural: true });
+          const caretEl = els.blocks.querySelector(`[data-id="${lastB.id}"] .eb-text`);
+          if (caretEl) setCaret(caretEl, caretAt);
           return;
         }
       }
@@ -1365,6 +1392,16 @@ const Editor = (() => {
     </div>`);
     document.body.appendChild(fmtbar);
 
+    // auto-hide: the bar disappears a few seconds after it stops being used;
+    // hovering it keeps it open
+    let fmtbarTimer = 0;
+    const armFmtbarTimer = () => {
+      clearTimeout(fmtbarTimer);
+      fmtbarTimer = setTimeout(() => { fmtbar.hidden = true; }, 4000);
+    };
+    fmtbar.addEventListener('mouseenter', () => clearTimeout(fmtbarTimer));
+    fmtbar.addEventListener('mouseleave', armFmtbarTimer);
+
     fmtbar.addEventListener('mousedown', (e) => e.preventDefault());
     fmtbar.addEventListener('click', async (e) => {
       const cmd = e.target.closest('button')?.dataset.f;
@@ -1403,6 +1440,7 @@ const Editor = (() => {
       const sr = els.scroll.getBoundingClientRect();
       if (rect.bottom < sr.top || rect.top > sr.bottom) { fmtbar.hidden = true; return; }
       fmtbar.hidden = false;
+      armFmtbarTimer();
       const x = Math.min(Math.max(8, rect.left + rect.width / 2 - fmtbar.offsetWidth / 2), window.innerWidth - fmtbar.offsetWidth - 8);
       fmtbar.style.left = `${x}px`;
       fmtbar.style.top = `${Math.max(8, rect.top - fmtbar.offsetHeight - 8)}px`;
@@ -1929,6 +1967,7 @@ const Editor = (() => {
       wikiBox.remove();
       document.body.classList.remove('focus-mode');
       clearTimeout(idleTimer);
+      clearTimeout(fmtbarTimer);
       // final flush
       Store.updateArticle(articleId, { title: article.title, digest: article.digest, blocks: article.blocks, cover: article.cover })
         .then(() => localStorage.removeItem(CACHE_KEY))
