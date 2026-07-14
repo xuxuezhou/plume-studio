@@ -896,7 +896,7 @@ select.input, select.input-sm { cursor: pointer; }
 .eb-toggle-body { display: none; padding: 8px 0 2px 24px; font-size: .95em; }
 .eb-toggle.open .eb-toggle-body { display: block; }
 
-.eb-hr { border: none; border-top: 1px solid var(--border-2); margin: 18px auto; width: 40%; }
+.eb-hr { border: none; border-top: 1px solid var(--border-2); margin: 18px 0; width: 100%; }
 .ebt-divider .eb-body { cursor: default; }
 
 .eb-code {
@@ -1293,7 +1293,7 @@ body.focus-mode .sidebar { display: none; }
 .reader-body mark { background: rgba(200,165,60,.28); color: inherit; padding: 0 2px; border-radius: 2px; }
 .reader-body code { font-family: var(--font-mono); font-size: .84em; background: var(--r-inset, var(--bg-inset)); border-radius: 4px; padding: 1px 5px; }
 .reader-body hr {
-  border: none; margin: 2.6em auto; width: var(--r-hr-width, 36%);
+  border: none; margin: 2.6em auto; width: var(--r-hr-width, 100%);
   border-top: var(--r-hr, 1px solid var(--border-2));
   text-align: center;
 }
