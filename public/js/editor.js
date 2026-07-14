@@ -1415,8 +1415,18 @@ const Editor = (() => {
         const tag = cmd === 'mark' ? 'mark' : 'code';
         document.execCommand('insertHTML', false, `<${tag}>${html}</${tag}>`);
       } else if (cmd === 'link') {
+        // the prompt steals focus and deactivates the selection — save the
+        // range and restore it before creating the link
+        const saved = sel.getRangeAt(0).cloneRange();
         const url = await UI.prompt('插入链接', { placeholder: 'https://…' });
-        if (url) document.execCommand('createLink', false, url);
+        if (url) {
+          const host = (saved.startContainer.nodeType === 1 ? saved.startContainer : saved.startContainer.parentElement)?.closest('.eb-text');
+          host?.focus();
+          const s = window.getSelection();
+          s.removeAllRanges();
+          s.addRange(saved);
+          document.execCommand('createLink', false, url);
+        }
       }
       // sync model
       const text = sel.anchorNode?.parentElement?.closest?.('.eb-text');
@@ -1451,7 +1461,16 @@ const Editor = (() => {
     // keep it pinned to the selection while scrolling
     const onDocPointerDown = (e) => {
       lastSelectAllBlock = ''; // clicking breaks the two-stage select-all sequence
-      if (!fmtbar.hidden && !fmtbar.contains(e.target)) fmtbar.hidden = true;
+      if (fmtbar.contains(e.target)) return;
+      fmtbar.hidden = true;
+      clearTimeout(fmtbarTimer);
+      // clicking anywhere else also clears the text highlight, so the bar
+      // cannot come back for a selection the user has dismissed. Exceptions:
+      // modals/menus (the link dialog needs the live selection) and
+      // shift-click (extends the selection).
+      if (e.shiftKey || e.target.closest?.('#modalRoot, .menu')) return;
+      const sel = window.getSelection();
+      if (sel.rangeCount && !sel.isCollapsed && els.blocks.contains(sel.anchorNode)) sel.removeAllRanges();
     };
     document.addEventListener('pointerdown', onDocPointerDown);
     els.scroll.addEventListener('scroll', () => { if (!fmtbar.hidden) updateFmtbar(); }, { passive: true });
