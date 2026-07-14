@@ -25,6 +25,7 @@ const UI = (() => {
     check: '<path d="m5 12 5 5 9-10"/>',
     x: '<path d="M6 6l12 12M18 6 6 18"/>',
     pen: '<path d="M4 20h4L20 8a2.5 2.5 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+    highlighter: '<path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/>',
     eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
     download: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/>',
     upload: '<path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M4 20h16"/>',

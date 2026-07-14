@@ -1250,6 +1250,108 @@ const Editor = (() => {
       document.execCommand('insertHTML', false, insertHtml);
     });
 
+    // ---------- cross-block selection: paste-replace / delete / cut ----------
+    // A selection spanning multiple blocks (e.g. two-stage select-all) lives
+    // outside any single contenteditable, so these are document-level handlers.
+
+    function crossBlockSelection() {
+      const sel = window.getSelection();
+      if (!sel.rangeCount || sel.isCollapsed) return null;
+      const r = sel.getRangeAt(0);
+      const ca = r.commonAncestorContainer;
+      if (!els.blocks.contains(ca)) return null;
+      const el = ca.nodeType === 1 ? ca : ca.parentElement;
+      if (el !== els.blocks && el?.closest('.eb')) return null; // within a single block → native handling
+      const ebs = [...els.blocks.children].filter((c) => c.classList.contains('eb') && r.intersectsNode(c));
+      return ebs.length ? { range: r, ebs } : null;
+    }
+
+    // replace the selected blocks with blocks parsed from `plain`, keeping any
+    // unselected text at the edges of the first / last block; returns the id
+    // of the block the caret lands in
+    function replaceCrossBlockSelection({ range, ebs }, plain) {
+      const edgeHtml = (eb, where) => {
+        const textEl = eb.querySelector('.eb-text');
+        const node = where === 'before' ? range.startContainer : range.endContainer;
+        if (!textEl || !textEl.contains(node)) return '';
+        const part = document.createRange();
+        part.selectNodeContents(textEl);
+        if (where === 'before') part.setEnd(range.startContainer, range.startOffset);
+        else part.setStart(range.endContainer, range.endOffset);
+        const div = document.createElement('div');
+        div.appendChild(part.cloneContents());
+        return div.innerHTML;
+      };
+      const prefix = edgeHtml(ebs[0], 'before');
+      const suffix = edgeHtml(ebs[ebs.length - 1], 'after');
+
+      const parsed = plain.trim() ? MD.parse(plain) : [];
+      if (prefix) {
+        if (parsed[0] && TEXT_TYPES.has(parsed[0].type)) parsed[0].text = MD.sanitizeInline(prefix + (parsed[0].text || ''));
+        else { const p = MD.block('p'); p.text = MD.sanitizeInline(prefix); parsed.unshift(p); }
+      }
+      const suffixLen = MD.plainText(suffix ? MD.sanitizeInline(suffix) : '').length;
+      if (suffix) {
+        const last = parsed[parsed.length - 1];
+        if (last && TEXT_TYPES.has(last.type)) last.text = MD.sanitizeInline((last.text || '') + suffix);
+        else { const p = MD.block('p'); p.text = MD.sanitizeInline(suffix); parsed.push(p); }
+      }
+      if (!parsed.length) parsed.push(MD.block('p'));
+
+      const from = blockIndex(ebs[0].dataset.id);
+      const to = blockIndex(ebs[ebs.length - 1].dataset.id);
+      article.blocks.splice(from, to - from + 1, ...parsed);
+      renderAll();
+      changed({ structural: true });
+      const lastB = parsed[parsed.length - 1];
+      const lastEl = els.blocks.querySelector(`[data-id="${lastB.id}"] .eb-text`);
+      if (lastEl) setCaret(lastEl, Math.max(0, MD.plainText(lastB.text || '').length - suffixLen));
+      return lastB.id;
+    }
+
+    const onDocPaste = async (e) => {
+      const cbs = crossBlockSelection();
+      if (!cbs) return;
+      const plain = e.clipboardData?.getData('text/plain') || '';
+      const images = [...(e.clipboardData?.items || [])].filter((item) => item.type.startsWith('image/'));
+      if (!plain && !images.length) return; // empty clipboard must not eat the selection
+      e.preventDefault();
+      e.stopPropagation();
+      if (!plain && images.length) {
+        const files = images.map((item) => item.getAsFile()).filter(Boolean);
+        let anchor = replaceCrossBlockSelection(cbs, '');
+        for (const file of files) {
+          const entry = await Store.addImage(file);
+          const nb = MD.block('image', { src: `img:${entry.id}`, alt: '', caption: '', title: '', layout: 'center', width: 100, radius: 6 });
+          insertBlock(nb, anchor);
+          anchor = nb.id;
+        }
+        return;
+      }
+      replaceCrossBlockSelection(cbs, plain);
+    };
+    document.addEventListener('paste', onDocPaste, true);
+
+    const onDocDeleteKey = (e) => {
+      if (e.key !== 'Backspace' && e.key !== 'Delete') return;
+      const cbs = crossBlockSelection();
+      if (!cbs) return;
+      e.preventDefault();
+      e.stopPropagation();
+      replaceCrossBlockSelection(cbs, '');
+    };
+    document.addEventListener('keydown', onDocDeleteKey, true);
+
+    const onDocCut = (e) => {
+      const cbs = crossBlockSelection();
+      if (!cbs) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.clipboardData?.setData('text/plain', window.getSelection().toString());
+      replaceCrossBlockSelection(cbs, '');
+    };
+    document.addEventListener('cut', onDocCut, true);
+
     // ---------- floating format toolbar ----------
 
     const fmtbar = UI.el(`<div class="fmtbar" hidden>
@@ -1257,7 +1359,7 @@ const Editor = (() => {
       <button data-f="italic" title="斜体"><i>I</i></button>
       <button data-f="underline" title="下划线"><u>U</u></button>
       <button data-f="strikeThrough" title="删除线"><s>S</s></button>
-      <button data-f="mark" title="高亮"><span class="fmt-mark">高</span></button>
+      <button data-f="mark" title="高亮">${UI.icon('highlighter', 13)}</button>
       <button data-f="code" title="行内代码">${UI.icon('code', 13)}</button>
       <button data-f="link" title="链接">${UI.icon('link', 13)}</button>
     </div>`);
@@ -1820,6 +1922,9 @@ const Editor = (() => {
       inst.destroyed = true;
       document.removeEventListener('selectionchange', onSelChange);
       document.removeEventListener('pointerdown', onDocPointerDown);
+      document.removeEventListener('paste', onDocPaste, true);
+      document.removeEventListener('keydown', onDocDeleteKey, true);
+      document.removeEventListener('cut', onDocCut, true);
       fmtbar.remove();
       wikiBox.remove();
       document.body.classList.remove('focus-mode');
