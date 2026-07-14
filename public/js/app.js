@@ -1,5 +1,8 @@
 /* App shell: sidebar, router, global search, boot. Global: App */
 const App = (() => {
+  // bump together with the ?v= query in index.html on each deploy
+  const BUILD = '20260714d';
+  console.info(`Plume Studio build ${BUILD}`);
   const els = {};
   let currentView = null;      // instance with destroy() for editor/reader
   let currentRoute = '';
@@ -49,6 +52,7 @@ const App = (() => {
       <div class="side-brand">
         <img src="./favicon.svg" alt="" width="22" height="22">
         <b>Plume Studio</b>
+        <span class="side-ver" title="构建版本 ${BUILD}">${BUILD.slice(4)}</span>
         <button class="icon-btn side-theme" data-app="theme" title="切换外观">${document.documentElement.dataset.theme === 'dark' ? UI.icon('sun', 15) : UI.icon('moon', 15)}</button>
       </div>
       <button class="side-search" data-app="search">${UI.icon('search', 15)}<span>搜索…</span><kbd>⌘K</kbd></button>
