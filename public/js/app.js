@@ -1,7 +1,7 @@
 /* App shell: sidebar, router, global search, boot. Global: App */
 const App = (() => {
   // bump together with the ?v= query in index.html on each deploy
-  const BUILD = '20260714e';
+  const BUILD = '20260714f';
   console.info(`Plume Studio build ${BUILD}`);
   const els = {};
   let currentView = null;      // instance with destroy() for editor/reader
@@ -227,6 +227,46 @@ const App = (() => {
     renderSidebar();
     refreshLists();
   }, 120);
+
+  // ---------- diagnostic HUD (triple-click the version stamp) ----------
+
+  let hud = null, hudTimer = 0;
+  const hudEvents = {};
+  ['pointerdown', 'mousedown', 'click', 'selectionchange', 'keydown'].forEach((t) => {
+    document.addEventListener(t, () => { hudEvents[t] = Date.now(); }, true);
+  });
+  let verClicks = [];
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest?.('.side-ver')) return;
+    const now = Date.now();
+    verClicks = verClicks.filter((ts) => now - ts < 1200).concat(now);
+    if (verClicks.length >= 3) { verClicks = []; toggleHud(); }
+  });
+  function toggleHud() {
+    if (hud) { hud.remove(); hud = null; clearInterval(hudTimer); return; }
+    hud = UI.el('<div style="position:fixed;right:8px;bottom:8px;z-index:9999;background:rgba(0,0,0,.85);color:#8f8;font:11px/1.5 ui-monospace,monospace;padding:8px 10px;border-radius:6px;max-width:340px;pointer-events:none;white-space:pre"></div>');
+    document.body.appendChild(hud);
+    hudTimer = setInterval(() => {
+      const s = window.getSelection();
+      const bars = document.querySelectorAll('.fmtbar');
+      const bar = bars[bars.length - 1];
+      const age = (t) => hudEvents[t] ? `${((Date.now() - hudEvents[t]) / 1000).toFixed(1)}s` : '—';
+      const anchorEl = s.anchorNode && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentElement);
+      const loc = !s.rangeCount ? 'none'
+        : anchorEl?.closest?.('.eb-text') ? 'eb-text'
+        : anchorEl?.closest?.('.editor-title') ? 'title'
+        : anchorEl?.closest?.('.editor-blocks') ? 'blocks'
+        : (anchorEl?.tagName || '?');
+      hud.textContent = [
+        `build ${BUILD}`,
+        `bar: ${bar ? (bar.hidden ? 'hidden' : 'VISIBLE') : 'none'} ×${bars.length}`,
+        `sel: ${!s.rangeCount ? 'none' : s.isCollapsed ? 'collapsed' : JSON.stringify(s.toString().slice(0, 24))}`,
+        `anchor: ${loc}`,
+        `pd ${age('pointerdown')}  md ${age('mousedown')}  clk ${age('click')}`,
+        `selchg ${age('selectionchange')}  key ${age('keydown')}`,
+      ].join('\n');
+    }, 300);
+  }
 
   // ---------- boot ----------
 

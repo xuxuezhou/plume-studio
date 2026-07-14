@@ -1500,7 +1500,8 @@ const Editor = (() => {
       }
     };
     // capture phase on both pointerdown and mousedown: no other handler's
-    // stopPropagation can starve the dismissal
+    // stopPropagation can starve the dismissal. NOTE: never hook 'click' here —
+    // it fires after a drag-selection is created and would instantly wipe it.
     document.addEventListener('pointerdown', onDocPointerDown, true);
     document.addEventListener('mousedown', onDocPointerDown, true);
     els.scroll.addEventListener('scroll', () => { if (!fmtbar.hidden) updateFmtbar(); }, { passive: true });
