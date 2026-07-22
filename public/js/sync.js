@@ -126,7 +126,7 @@ const Sync = (() => {
     if (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0') return 'GitHub 接口调用次数已达上限,请稍后再试';
     if (res.status === 403) return `没有权限:${msg}(请确认令牌勾选了 Contents 读写)`;
     if (res.status === 404) return '找不到仓库:请检查仓库名,以及令牌是否授权了这个仓库';
-    if (res.status === 409) return '仓库还是空的,请先点「初始化仓库」';
+    if (res.status === 409) return '仓库里还没有任何提交,请先点「初始化仓库」建立第一个提交';
     if (res.status === 422) return `GitHub 拒绝了这次提交:${msg}`;
     return `${msg}(HTTP ${res.status})`;
   }
@@ -455,8 +455,24 @@ const Sync = (() => {
       ''
     ].join('\n');
     clearBase();
-    const head = await commitChanges(remote, [{ path: 'README.md', bytes: enc(readme) }], 'Plume:初始化保险库');
-    return { already: false, commit: head };
+    // A repository with no commits rejects the git-data API outright (409), so
+    // the very first file has to go through the contents API — which also
+    // creates the branch for us.
+    try {
+      await api(`/repos/${repo()}/contents/README.md`, {
+        method: 'PUT',
+        body: { message: 'Plume:初始化保险库', content: b64encode(enc(readme)), branch: branch() }
+      });
+    } catch (err) {
+      if (err.status === 404) {
+        const info = await api(`/repos/${repo()}`).catch(() => null);
+        if (info && info.default_branch !== branch()) {
+          throw new Error(`仓库的默认分支是 ${info.default_branch},请把设置里的分支改成它`);
+        }
+      }
+      throw err;
+    }
+    return { already: false };
   }
 
   // Pull everything from the vault, overwriting local copies with the same id.
