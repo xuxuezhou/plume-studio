@@ -1,7 +1,7 @@
 /* App shell: sidebar, router, global search, boot. Global: App */
 const App = (() => {
   // bump together with the ?v= query in index.html on each deploy
-  const BUILD = '20260714h';
+  const BUILD = '20260722a';
   console.info(`Plume Studio build ${BUILD}`);
   const els = {};
   let currentView = null;      // instance with destroy() for editor/reader
@@ -94,7 +94,25 @@ const App = (() => {
         ${navItem('#/templates', 'template', '模板中心')}
         ${navItem('#/trash', 'trash', '回收站', { count: trashCount || '' })}
         ${navItem('#/settings', 'settings', '设置')}
+        <button class="side-sync" data-app="sync" title="点击立即同步"><span class="sync-dot"></span><span class="side-sync-text">…</span></button>
       </div>`;
+    paintSyncPill();
+  }
+
+  // The pill is the one always-visible answer to "is my writing safe?".
+  function paintSyncPill(st = Sync.status) {
+    const pill = els.sidebar?.querySelector('.side-sync');
+    if (!pill) return;
+    pill.dataset.state = st.state;
+    const label = {
+      off: '未配置云同步',
+      idle: st.message,
+      pending: '有改动待同步',
+      syncing: '同步中…',
+      error: `同步失败 · 点击重试`
+    }[st.state] || st.message;
+    pill.querySelector('.side-sync-text').textContent = label;
+    pill.title = st.error ? `${st.error}(点击重试)` : (st.state === 'off' ? '前往设置配置云同步' : '点击立即同步');
   }
 
   function onSidebarClick(e) {
@@ -124,6 +142,10 @@ const App = (() => {
     if (act === 'theme') {
       const cur = document.documentElement.dataset.theme;
       Store.saveSettings({ uiTheme: cur === 'dark' ? 'light' : 'dark' }).then(applyUiTheme).then(renderSidebar);
+    }
+    if (act === 'sync') {
+      if (!Sync.configured()) { location.hash = '#/settings'; return; }
+      Sync.syncNow();
     }
   }
 
@@ -291,6 +313,8 @@ const App = (() => {
     });
 
     Store.on(onStoreChange);
+    Sync.on(paintSyncPill);
+    Sync.init();
     window.addEventListener('hashchange', route);
     route();
 

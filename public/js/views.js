@@ -1022,7 +1022,24 @@ const Views = (() => {
             <button class="btn btn-sm" data-set="restore">${UI.icon('upload', 14)} 从备份恢复</button>
             <button class="btn btn-sm" data-set="import">${UI.icon('upload', 14)} 导入文章</button>
           </div>
-          <p class="hint" style="margin-top:10px">云端同步:接口已预留,当前版本为纯本地存储。</p>
+        </section>
+
+        <section class="sync-section">
+          <h3>云同步(GitHub 私有仓库)</h3>
+          <p class="hint">文章会自动备份到你自己的 <b>私有</b> GitHub 仓库,每次同步是一个 commit,可回溯到任意时间点。备份里同时写入可直接在网页上阅读的 Markdown,即使这个应用彻底损坏,文字也拿得回来。</p>
+          <div class="sync-state-box"><span class="sync-dot"></span><span class="sync-state-text">读取中…</span></div>
+          <div class="set-row"><label>保险库仓库<span class="hint">格式 用户名/仓库名,必须是私有仓库</span></label><input class="input" data-s="syncRepo" value="${UI.esc(s.syncRepo || '')}" placeholder="xuxuezhou/plume-vault"></div>
+          <div class="set-row"><label>分支</label><input class="input" data-s="syncBranch" value="${UI.esc(s.syncBranch || 'main')}" placeholder="main"></div>
+          <div class="set-row"><label>访问令牌<span class="hint">细粒度令牌,只需勾选 Contents 读写,且只授权上面这一个仓库</span></label><input class="input" type="password" data-sync-token placeholder="github_pat_..." value="${Sync.getToken() ? '••••••••••••' : ''}"></div>
+          <div class="set-row"><label>自动同步<span class="hint">保存后 30 秒、切走页面时、每 10 分钟各同步一次</span></label><input type="checkbox" data-s="syncAuto" ${s.syncAuto !== false ? 'checked' : ''}></div>
+          <div class="set-links">
+            <button class="btn btn-sm" data-set="sync-test">测试连接</button>
+            <button class="btn btn-sm" data-set="sync-init">初始化仓库</button>
+            <button class="btn btn-sm btn-primary" data-set="sync-now">${UI.icon('upload', 14)} 立即同步</button>
+            <button class="btn btn-sm" data-set="sync-restore">${UI.icon('download', 14)} 从云端恢复全部</button>
+            <button class="btn btn-sm" data-set="sync-history">查看云端历史</button>
+          </div>
+          <p class="hint" style="margin-top:10px">令牌只保存在本机浏览器,不会写进导出的备份文件。请为它设置有效期,并只授权保险库这一个仓库——这样即使令牌泄露,影响也仅限于这个备份仓库。</p>
         </section>
 
         <section>
@@ -1088,7 +1105,74 @@ const Views = (() => {
         }
       }
       if (act === 'import') Exporter.importDialog();
+
+      if (act === 'sync-test') {
+        try {
+          const info = await Sync.test();
+          UI.toast(info.private
+            ? `连接成功:${info.full}${info.empty ? '(空仓库,请点初始化)' : ''}`
+            : `连接成功,但 ${info.full} 是公开仓库!请到 GitHub 把它改为私有`, info.private ? 'success' : 'error');
+        } catch (err) { UI.toast(err.message, 'error'); }
+      }
+      if (act === 'sync-init') {
+        try {
+          const r = await Sync.initRepo();
+          UI.toast(r.already ? '仓库已经初始化过了' : '仓库已初始化,现在可以同步了', 'success');
+        } catch (err) { UI.toast(err.message, 'error'); }
+      }
+      if (act === 'sync-now') {
+        try {
+          const r = await Sync.syncNow();
+          if (r) UI.toast(`同步完成:上传 ${r.pushed} 个文件,下载 ${r.pulled} 个`, 'success');
+        } catch { /* syncNow already surfaced the error */ }
+      }
+      if (act === 'sync-restore') {
+        if (!(await UI.confirm('从云端恢复全部', '会用云端的内容覆盖本机同名文章(本机独有的文章不会被删除)。确定继续?', { okText: '恢复' }))) return;
+        try {
+          const r = await Sync.restoreAll();
+          UI.toast(`已从云端恢复 ${r.files} 个文件`, 'success');
+          rerender();
+        } catch (err) { UI.toast(err.message, 'error'); }
+      }
+      if (act === 'sync-history') {
+        try {
+          const list = await Sync.history(20);
+          UI.modal({
+            title: '云端同步历史',
+            width: 560,
+            body: list.length
+              ? `<div class="sync-history">${list.map((c) => `<div class="sync-history-row"><code>${c.short}</code><span>${UI.esc(c.message)}</span><time>${UI.fmtDateTime(c.date)}</time></div>`).join('')}</div>`
+              : '<p class="hint">云端还没有任何提交。</p>',
+            footer: [{ label: '关闭', kind: 'btn-primary' }]
+          });
+        } catch (err) { UI.toast(err.message, 'error'); }
+      }
     };
+
+    // token lives outside Store.settings so it never reaches an export file
+    const tokenInput = container.querySelector('[data-sync-token]');
+    if (tokenInput) {
+      tokenInput.addEventListener('change', () => {
+        const v = tokenInput.value.trim();
+        if (v.startsWith('•')) return;              // untouched placeholder
+        Sync.setToken(v);
+        UI.toast(v ? '令牌已保存到本机' : '令牌已清除', 'success');
+      });
+    }
+
+    const box = container.querySelector('.sync-state-box');
+    if (box) {
+      const paint = (st) => {
+        box.dataset.state = st.state;
+        const text = box.querySelector('.sync-state-text');
+        if (text) text.textContent = st.error ? `${st.message}` : st.message;
+      };
+      paint(Sync.status);
+      const off = Sync.on(paint);
+      // settings page is re-rendered wholesale on navigation; drop the listener with it
+      const observer = new MutationObserver(() => { if (!document.body.contains(box)) { off(); observer.disconnect(); } });
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
   }
 
   // ---------- router entry ----------

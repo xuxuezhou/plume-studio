@@ -97,7 +97,10 @@ const Store = (() => {
     imgQuality: 0.85,
     customStatuses: [],
     trashDays: 30,
-    aiPlugin: false             // reserved: AI features stay off by default
+    aiPlugin: false,            // reserved: AI features stay off by default
+    syncRepo: '',               // owner/name of the private vault repo
+    syncBranch: 'main',
+    syncAuto: true
   };
 
   const BUILTIN_TEMPLATES = [
@@ -978,8 +981,42 @@ const Store = (() => {
     emit();
   }
 
+  // ---------- sync ----------
+
+  // Write data pulled from the cloud straight into the store, keeping the
+  // incoming timestamps intact. Existing ids are replaced, unknown ids are
+  // added; nothing is ever deleted here, so a bad pull can't destroy work.
+  async function applyRemote({ articles = [], meta = {}, images = [] } = {}) {
+    for (const a of articles) {
+      if (!a?.id) continue;
+      const i = state.articles.findIndex((x) => x.id === a.id);
+      if (i >= 0) state.articles[i] = a; else state.articles.push(a);
+      await PlumeDB.put('articles', a);
+    }
+    for (const [name, value] of Object.entries(meta)) {
+      if (value == null) continue;
+      if (name === 'settings') {
+        // Cloud settings must not clobber this device's own sync config.
+        const { syncRepo, syncBranch, syncAuto } = state.settings;
+        state.settings = { ...DEFAULT_SETTINGS, ...value, syncRepo, syncBranch, syncAuto };
+      } else if (name === 'dailyStats') {
+        state.dailyStats = { ...value, ...state.dailyStats };
+      } else if (Array.isArray(state[name])) {
+        state[name] = value;
+      } else continue;
+      await saveMeta(name);
+    }
+    for (const img of images) {
+      if (!img?.id) continue;
+      const i = state.images.findIndex((x) => x.id === img.id);
+      if (i >= 0) state.images[i] = img; else state.images.push(img);
+      await PlumeDB.put('images', img);
+    }
+    emit();
+  }
+
   return {
-    state, on, init,
+    state, on, init, applyRemote,
     STATUSES, allStatuses, statusById,
     article, liveArticles, trashedArticles,
     createArticle, createFromTemplate, updateArticle, duplicateArticle,
