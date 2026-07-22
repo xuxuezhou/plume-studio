@@ -95,40 +95,84 @@ const Sync = (() => {
 
   // ---------- GitHub REST ----------
 
-  async function api(path, { method = 'GET', body, raw = false } = {}) {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const RETRY_STATUS = new Set([408, 429, 500, 502, 503, 504]);
+  const backoff = (attempt) => [800, 2500, 6000][attempt] || 6000;
+
+  // Retries transient trouble instead of surfacing it. Every mutating call here
+  // is safe to repeat: blobs and trees are content-addressed, a duplicate
+  // commit object is unreachable garbage until a ref points at it, and setting
+  // a ref to the same sha twice is a no-op.
+  async function api(path, { method = 'GET', body, raw = false, attempt = 0 } = {}) {
     const token = getToken();
     if (!token) throw new Error('尚未填写访问令牌');
-    const res = await fetch(`${API}${path}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        ...(body ? { 'Content-Type': 'application/json' } : {})
-      },
-      body: body ? JSON.stringify(body) : undefined
-    });
+    const again = () => api(path, { method, body, raw, attempt: attempt + 1 });
+
+    let res;
+    try {
+      res = await fetch(`${API}${path}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          ...(body ? { 'Content-Type': 'application/json' } : {})
+        },
+        body: body ? JSON.stringify(body) : undefined
+      });
+    } catch {
+      // Network-level failure: offline, or a backgrounded tab being throttled.
+      if (attempt < 2) { await sleep(backoff(attempt)); return again(); }
+      const err = new Error(navigator.onLine === false ? '当前离线,联网后会自动重试' : '网络请求失败,稍后会自动重试');
+      err.transient = true;
+      throw err;
+    }
+
     if (res.status === 204) return null;
     const text = await res.text();
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch { data = null; }
+
     if (!res.ok) {
-      const err = new Error(describeError(res, data));
+      const secondary = res.status === 403 && /secondary rate limit|abuse detection/i.test(data?.message || '');
+      const retryable = RETRY_STATUS.has(res.status) || secondary;
+      if (retryable && attempt < 2) {
+        const retryAfter = Number(res.headers.get('retry-after'));
+        await sleep(retryAfter > 0 ? retryAfter * 1000 : backoff(attempt));
+        return again();
+      }
+      const err = new Error(describeError(res, data, secondary));
       err.status = res.status;
+      err.transient = retryable;
       throw err;
     }
     return raw ? text : data;
   }
 
-  function describeError(res, data) {
+  function describeError(res, data, secondary = false) {
     const msg = data?.message || res.statusText || '未知错误';
     if (res.status === 401) return '令牌无效或已过期,请在设置里重新填写';
+    if (secondary) return 'GitHub 限流(短时间请求过多),稍后会自动重试';
     if (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0') return 'GitHub 接口调用次数已达上限,请稍后再试';
     if (res.status === 403) return `没有权限:${msg}(请确认令牌勾选了 Contents 读写)`;
     if (res.status === 404) return '找不到仓库:请检查仓库名,以及令牌是否授权了这个仓库';
     if (res.status === 409) return '仓库里还没有任何提交,请先点「初始化仓库」建立第一个提交';
     if (res.status === 422) return `GitHub 拒绝了这次提交:${msg}`;
     return `${msg}(HTTP ${res.status})`;
+  }
+
+  // ---------- diagnostics ----------
+
+  const LOG_KEY = 'plume-sync-log';
+  function logEvent(msg, kind = 'error') {
+    try {
+      const log = errorLog();
+      log.unshift({ at: new Date().toISOString(), kind, msg });
+      localStorage.setItem(LOG_KEY, JSON.stringify(log.slice(0, 30)));
+    } catch { /* logging must never break a sync */ }
+  }
+  function errorLog() {
+    try { return JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); } catch { return []; }
   }
 
   // ---------- local snapshot ----------
@@ -323,15 +367,51 @@ const Sync = (() => {
 
   // ---------- the sync itself ----------
 
-  async function syncNow({ silent = false } = {}) {
+  async function syncNow({ silent = false, bestEffort = false } = {}) {
     if (running) return running;
     if (!configured()) {
       setStatus({ state: 'off', message: '未配置云同步' });
       return null;
     }
+    const previous = status;
     running = (async () => {
       setStatus({ state: 'syncing', message: '同步中…', busy: true, error: '' });
       try {
+        let result;
+        try {
+          result = await performSync(silent);
+        } catch (err) {
+          // Another device (or tab) moved the branch under us — re-read and
+          // rebuild the diff once rather than reporting a failure.
+          if (err.status === 422 || err.status === 409) {
+            logEvent(`分支被其他设备更新,重试一次:${err.message}`, 'retry');
+            result = await performSync(silent);
+          } else throw err;
+        }
+        localStorage.setItem(LAST_KEY, new Date().toISOString());
+        const note = result.conflicts ? `已同步(${result.conflicts} 处冲突已保留为副本)` : '已同步';
+        setStatus({ state: 'idle', message: note, busy: false, error: '' });
+        if (!silent && result.conflicts) UI.toast(`同步完成,${result.conflicts} 篇文章存在冲突,云端版本已另存为副本`, 'warn');
+        return result;
+      } catch (err) {
+        logEvent(err.message || '同步失败');
+        // A best-effort run (page going to the background, where the browser
+        // throttles network) must not paint a scary red state: the next
+        // foreground sync picks the work up untouched.
+        if (bestEffort) setStatus({ ...previous, busy: false });
+        else setStatus({ state: 'error', message: err.message || '同步失败', busy: false, error: err.message || '' });
+        if (!silent) UI.toast(`同步失败:${err.message}`, 'error');
+        throw err;
+      } finally {
+        running = null;
+      }
+    })();
+    return running.catch(() => null);
+  }
+
+  async function performSync(silent) {
+    {
+      {
         const remote = await remoteTree();
         if (remote.empty) throw new Error('仓库还是空的,请先点「初始化仓库」');
         const base = loadBase();
@@ -402,20 +482,9 @@ const Sync = (() => {
           saveBase(head, map);
         }
 
-        localStorage.setItem(LAST_KEY, new Date().toISOString());
-        const note = conflicts.length ? `已同步(${conflicts.length} 处冲突已保留为副本)` : '已同步';
-        setStatus({ state: 'idle', message: note, busy: false, error: '' });
-        if (!silent && conflicts.length) UI.toast(`同步完成,${conflicts.length} 篇文章存在冲突,云端版本已另存为副本`, 'warn');
         return { pulled: toPull.length, pushed: changes.length, conflicts: conflicts.length };
-      } catch (err) {
-        setStatus({ state: 'error', message: err.message || '同步失败', busy: false, error: err.message || '' });
-        if (!silent) UI.toast(`同步失败:${err.message}`, 'error');
-        throw err;
-      } finally {
-        running = null;
       }
-    })();
-    return running.catch(() => null);
+    }
   }
 
   function commitMessage(changes) {
@@ -507,7 +576,8 @@ const Sync = (() => {
     if (!configured() || !autoOn() || applying) return;
     clearTimeout(timer);
     timer = setTimeout(() => syncNow({ silent: true }), delay);
-    if (status.state === 'idle' || status.state === 'off') setStatus({ state: 'pending', message: '有改动待同步' });
+    // An earlier failure shouldn't keep the pill red once a retry is queued.
+    if (status.state !== 'syncing') setStatus({ state: 'pending', message: '有改动待同步' });
   }
 
   function refreshStatus() {
@@ -521,12 +591,22 @@ const Sync = (() => {
     Store.on(() => { if (!applying) scheduleSync(); });
 
     document.addEventListener('visibilitychange', () => {
-      // Leaving the page is the last safe moment to push pending edits.
-      if (document.visibilityState === 'hidden' && configured() && autoOn()) {
+      if (!configured() || !autoOn()) return;
+      if (document.visibilityState === 'hidden') {
+        // Last chance to push pending edits — but the browser throttles network
+        // in background tabs, so only bother when something is actually waiting
+        // and never let a throttled request count as a real failure.
+        if (status.state !== 'pending') return;
         clearTimeout(timer);
-        syncNow({ silent: true });
+        syncNow({ silent: true, bestEffort: true });
+      } else {
+        // Back in the foreground: settle anything the background run missed.
+        scheduleSync(2000);
       }
     });
+
+    // Coming back online is the moment a queued-up failure can finally succeed.
+    window.addEventListener('online', () => { if (configured() && autoOn()) scheduleSync(1500); });
 
     clearInterval(poller);
     poller = setInterval(() => { if (configured() && autoOn() && !document.hidden) syncNow({ silent: true }); }, 10 * 60 * 1000);
@@ -535,7 +615,7 @@ const Sync = (() => {
   }
 
   return {
-    init, on, syncNow, test, initRepo, restoreAll, history,
+    init, on, syncNow, test, initRepo, restoreAll, history, errorLog,
     getToken, setToken, configured, repo, branch, autoOn, lastAt, clearBase,
     get status() { return status; }
   };

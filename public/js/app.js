@@ -1,7 +1,7 @@
 /* App shell: sidebar, router, global search, boot. Global: App */
 const App = (() => {
   // bump together with the ?v= query in index.html on each deploy
-  const BUILD = '20260722b';
+  const BUILD = '20260722c';
   console.info(`Plume Studio build ${BUILD}`);
   const els = {};
   let currentView = null;      // instance with destroy() for editor/reader

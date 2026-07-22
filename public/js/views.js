@@ -1038,6 +1038,7 @@ const Views = (() => {
             <button class="btn btn-sm btn-primary" data-set="sync-now">${UI.icon('upload', 14)} 立即同步</button>
             <button class="btn btn-sm" data-set="sync-restore">${UI.icon('download', 14)} 从云端恢复全部</button>
             <button class="btn btn-sm" data-set="sync-history">查看云端历史</button>
+            <button class="btn btn-sm" data-set="sync-log">同步日志</button>
           </div>
           <p class="hint" style="margin-top:10px">令牌只保存在本机浏览器,不会写进导出的备份文件。请为它设置有效期,并只授权保险库这一个仓库——这样即使令牌泄露,影响也仅限于这个备份仓库。</p>
         </section>
@@ -1133,6 +1134,17 @@ const Views = (() => {
           UI.toast(`已从云端恢复 ${r.files} 个文件`, 'success');
           rerender();
         } catch (err) { UI.toast(err.message, 'error'); }
+      }
+      if (act === 'sync-log') {
+        const log = Sync.errorLog();
+        UI.modal({
+          title: '同步日志(最近 30 条)',
+          width: 560,
+          body: log.length
+            ? `<div class="sync-history">${log.map((r) => `<div class="sync-history-row"><code>${r.kind === 'retry' ? '重试' : '失败'}</code><span>${UI.esc(r.msg)}</span><time>${UI.fmtDateTime(r.at)}</time></div>`).join('')}</div>`
+            : '<p class="hint">没有记录到任何同步失败。</p>',
+          footer: [{ label: '关闭', kind: 'btn-primary' }]
+        });
       }
       if (act === 'sync-history') {
         try {
